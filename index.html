@@ -29,17 +29,21 @@ function initialize() {
 }
 
 /**
- * Data for the markers consisting of a name, a LatLng and a zIndex for
- * the order in which these markers should display on top of each
- * other.
+ * Data for the markers:
+ * 0: Name
+ * 1: Latitude
+ * 2: Longitude
+ * 3: zIndex
+ * 4: Message for the marker.
+ * 5: 0=good quality; 1=caution; 2=unhealthy.
  */
 var sample_sites = [
-  ['Ensenada Blanca',  25.724881, -111.246491, 4, "<p>Nitrate: .1 ppm</p><p>pH: 7.11</p>", 0],
-  ['Playa Ligui',  25.74177, -111.258315, 5, "<p>Nitrate: .2 ppm</p><p>pH: 7.09</p>", 1],
-  ['Puerto Escondido',  25.811582, -111.307416, 3, "<p>Nitrate: .3 ppm</p><p>pH: 7.02</p>", 2],
-  ['Loreto Bay Estuary',  25.916395, -111.349023, 2, "<p>Nitrate: .2 ppm</p><p>pH: 7.18</p>", 1],
-  ['Loreto Bay Beach',  25.921455, -111.346357, 1, "<p>Nitrate: 0.0 ppm</p><p>pH: 7.01</p>", 0],
-  ['Cuevas Pintas',  25.977191, -111.465483, 0, "<p>Nitrate: .15 ppm</p><p>pH: 7.15</p>", 0]
+  ['Ensenada Blanca',  25.724881, -111.246491, 4, "<p>Nitrate: .1 ppm<br/>pH: 7.11</p>", 0],
+  ['Playa Ligui',  25.74177, -111.258315, 5, "<p>Nitrate: .2 ppm<br/>pH: 7.09</p>", 1],
+  ['Puerto Escondido',  25.811582, -111.307416, 3, "<p>Nitrate: .3 ppm<br/>pH: 7.02</p>", 2],
+  ['Loreto Bay Estuary',  25.916395, -111.349023, 2, "<p>Nitrate: .2 ppm<br/>pH: 7.18</p>", 1],
+  ['Loreto Bay Beach',  25.921455, -111.346357, 1, "<p>Nitrate: 0.0 ppm<br/>pH: 7.01</p>", 0],
+  ['Cuevas Pintas',  25.977191, -111.465483, 0, "<p>Nitrate: .15 ppm<br/>pH: 7.15</p>", 0]
 ];
 
 var icons = [
@@ -70,6 +74,7 @@ function setMarkers(map, locations) {
   for (var i = 0; i < locations.length; i++) {
     var sample_site = locations[i];
     var myLatLng = new google.maps.LatLng(sample_site[1], sample_site[2]);
+    // The image to be used with the marker:
     var image = {
       url: icons[sample_site[5]],
       // This marker is 20 pixels wide by 32 pixels tall.
@@ -79,6 +84,7 @@ function setMarkers(map, locations) {
       // The anchor for this image is the base of the flagpole at 0,32.
       anchor: new google.maps.Point(0, 32)
     };
+    // Now build the marker usign the above image:
     var marker = new google.maps.Marker({
         position: myLatLng,
         map: map,
@@ -87,7 +93,8 @@ function setMarkers(map, locations) {
         title: sample_site[0],
         zIndex: sample_site[3]
     });
-    attach_window(marker, sample_site[4]);
+    var msg = "<b>"+sample_site[0]+"</b>"+sample_site[4];
+    attach_window(marker, msg);
   }
 }
 
