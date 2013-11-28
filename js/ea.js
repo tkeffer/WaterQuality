@@ -20,7 +20,8 @@ function initialize() {
 	importer : Miso.Dataset.Importers.GoogleSpreadsheet,
 	parser : Miso.Dataset.Parsers.GoogleSpreadsheet,
 	key : "0Ar8LDnqhlSk_dHFpMDB5YXBIVHc5UmlQX25nalY5V3c",
-	worksheet : "1"
+	worksheet : "1",
+	columns: [{name:"Date", type:"time"}]
     });
 
     // Now go fetch the dataset. The return value, result, will be a deferred.
@@ -90,13 +91,17 @@ function get_flag_url(flag_no){
     return flags[flag_no]
 }
 
-special = {'_id':'', 'Date':'', 'Site':'', 'Latitude':'', 'Longitude':'', 'Comment':'', 'flag':''};
+special = {'_id':'', 'date':'', 'site':'', 'latitude':'', 'longitude':'', 'comment':'', 'flag':''};
 
+// TODO: Should use CSS tags for this:
 function get_html_msg(row_data){
-    result = "<b>" + row_data.Site + "</b><p>"
-    /* Given some row data, returns a nice HTML summary*/
+    // Given some row data, returns a nice HTML summary
+    result = "<h1>" + row_data.Site + "</h1>";
+    result += "<p><b>Sampling date: </b>" + row_data.Date.format("YYYY-MM-DD") + "</p>";
+    result += "<p><b>Comments:</b><br/>" + row_data.Comment + "</p>";
+    result += "<p><b>Data:</b><br/>";
     for (column in row_data){
-	if (!(column in special)){
+	if (!(column.toLowerCase() in special)){
 	    result += column + ": " + row_data[column] + "<br/>"
 	};
     };
