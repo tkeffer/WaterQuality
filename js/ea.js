@@ -1,6 +1,14 @@
-// The following example creates complex markers to indicate water quality
-// information near Loreto, BCS. Note that the anchor is set to
-// (0,32) to correspond to the base of the flagpole.
+/*
+ * Retrieves water quality info from a Google spreadsheet, then displays it
+ * on a map. Clicking on one of the flag brings up a popup with details.
+ *
+ * Tom Keffer 2013-11-28
+ *
+ * TODOs:
+ *  o The column names should be case insensitive. This would probably require
+ *    a custom Dataset importer.
+ *  o The popup InfoWindow should use CSS styling.
+ */
 
 var shape = {
     coord: [1, 1, 1, 20, 18, 20, 18 , 1],
@@ -91,9 +99,11 @@ function get_flag_url(flag_no){
     return flags[flag_no]
 }
 
-special = {'_id':'', 'date':'', 'site':'', 'latitude':'', 'longitude':'', 'comment':'', 'flag':''};
+// These column types are either not included in the popup summary, or
+// they are treated separately.
+special = {'_id':'', 'date':'', 'site':'', 'latitude':'', 
+	   'longitude':'', 'comment':'', 'flag':''};
 
-// TODO: Should use CSS tags for this:
 function get_html_msg(row_data){
     // Given some row data, returns a nice HTML summary
     result = "<h1>" + row_data.Site + "</h1>";
