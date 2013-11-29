@@ -7,7 +7,6 @@
  * TODOs:
  *  o The column names should be case insensitive. This would probably require
  *    a custom Dataset importer.
- *  o The popup InfoWindow should use CSS styling.
  */
 
 var shape = {
@@ -107,15 +106,19 @@ special = {'_id':'', 'date':'', 'site':'', 'latitude':'',
 function get_html_msg(row_data){
     // Given some row data, returns a nice HTML summary
     result = "<h1>" + row_data.Site + "</h1>";
-    result += "<p><b>Sampling date: </b>" + row_data.Date.format("YYYY-MM-DD") + "</p>";
+    result += "<p><b>Sampling date: </b><br/>" + row_data.Date.format("YYYY-MM-DD") + "</p>";
     result += "<p><b>Comments:</b><br/>" + row_data.Comment + "</p>";
-    result += "<p><b>Data:</b><br/>";
+    result += "<p><b>Data:</b></p>";
+    result += "<table border=1>"
     for (column in row_data){
 	if (!(column.toLowerCase() in special)){
-	    result += column + ": " + row_data[column] + "<br/>"
+	    result += "<tr>";
+	    result += "<td class='column_name'>"  + column           + "</td>";
+	    result += "<td class='column_value'>" + row_data[column] + "</td>";
+	    result += "</tr>";
 	};
     };
-    result += "</p>"
+    result += "</table>"
     return result
 }
 
