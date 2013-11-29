@@ -9,11 +9,13 @@
  *    a custom Dataset importer.
  */
 
+// Shape of the clickable polygon around each marker
 var shape = {
     coord: [1, 1, 1, 20, 18, 20, 18 , 1],
     type: 'poly'
 };
 
+// Flags to be used as markers.
 var flags = [
     'images/unknown.png',
     'images/good.png',
@@ -46,9 +48,9 @@ function initialize() {
     // The map is done. Wait for the deferred to be done, then populate the map 
     // with the sampling sites.
     result.done(function(ds){
-	// Iterate over each site
+	// Iterate over each row in the dataset. Each is a sampling site.
 	ds.each(function(site){
-	    // Add a marker for each site
+	    // Add a marker for this site
 	    set_marker(map, site);
 	});
     });
@@ -58,15 +60,15 @@ function initialize() {
 
 }
 
-function set_marker(map, row_data){
+function set_marker(map, site_data){
 
-    var myLatLng = new google.maps.LatLng(row_data.Latitude, row_data.Longitude);
+    var myLatLng = new google.maps.LatLng(site_data.Latitude, site_data.Longitude);
 
-    // Get a flag for this site
-    var flag_url = get_flag_url(row_data.flag);
+    // Get the url for the flag to be used for this site
+    var flag_url = get_flag_url(site_data.flag);
 
-    // The image to be used with the marker:
-    var image = {
+    // The icon data for the site marker
+    var icon_data = {
 	url: flag_url,
 	// This marker is 20 pixels wide by 32 pixels tall.
 	size: new google.maps.Size(20, 32),
@@ -76,17 +78,17 @@ function set_marker(map, row_data){
 	anchor: new google.maps.Point(0, 32)
     };
 
-    // Now build the marker using the above image:
+    // Now build the marker using the above data:
     var marker = new google.maps.Marker({
         position: myLatLng,
         map: map,
-        icon: image,
+        icon: icon_data,
         shape: shape,
-        title: row_data.Site
+        title: site_data.Site
     });
 
     // Get a nice HTML message to attach to the popup:
-    html_msg = get_html_msg(row_data);
+    html_msg = get_html_msg(site_data);
 
     // Now attach it.
     attach_window(marker, html_msg);
@@ -103,18 +105,18 @@ function get_flag_url(flag_no){
 special = {'_id':'', 'date':'', 'site':'', 'latitude':'', 
 	   'longitude':'', 'comment':'', 'flag':''};
 
-function get_html_msg(row_data){
+function get_html_msg(site_data){
     // Given some row data, returns a nice HTML summary
-    result = "<h1>" + row_data.Site + "</h1>";
-    result += "<p><b>Sampling date: </b><br/>" + row_data.Date.format("YYYY-MM-DD") + "</p>";
-    result += "<p><b>Comments:</b><br/>" + row_data.Comment + "</p>";
+    result = "<h1>" + site_data.Site + "</h1>";
+    result += "<p><b>Sampling date: </b><br/>" + site_data.Date.format("YYYY-MM-DD") + "</p>";
+    result += "<p><b>Comments:</b><br/>" + site_data.Comment + "</p>";
     result += "<p><b>Data:</b></p>";
     result += "<table border=1>"
-    for (column in row_data){
+    for (column in site_data){
 	if (!(column.toLowerCase() in special)){
 	    result += "<tr>";
-	    result += "<td class='column_name'>"  + column           + "</td>";
-	    result += "<td class='column_value'>" + row_data[column] + "</td>";
+	    result += "<td class='column_name'>"  + column            + "</td>";
+	    result += "<td class='column_value'>" + site_data[column] + "</td>";
 	    result += "</tr>";
 	};
     };
