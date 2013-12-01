@@ -1,12 +1,11 @@
 /*
  * Retrieves water quality info from a Google spreadsheet, then displays it
- * on a map. Clicking on one of the flag brings up a popup with details.
+ * on a map. Clicking on one of the flags brings up a popup with details.
  *
  * Tom Keffer 2013-11-28
  *
  * TODOs:
- *  o The column names should be case insensitive. This would probably require
- *    a custom Dataset importer.
+ *  o Better looking flags.
  */
 
 // Shape of the clickable polygon around each marker
@@ -62,10 +61,11 @@ function initialize() {
 
 function set_marker(map, site_data){
 
-    var myLatLng = new google.maps.LatLng(site_data.Latitude, site_data.Longitude);
+    var myLatLng = new google.maps.LatLng(cip(site_data, 'latitude'),
+					  cip(site_data, 'longitude'));
 
     // Get the url for the flag to be used for this site
-    var flag_url = get_flag_url(site_data.flag);
+    var flag_url = get_flag_url(cip(site_data, "flag"));
 
     // The icon data for the site marker
     var icon_data = {
@@ -84,7 +84,7 @@ function set_marker(map, site_data){
         map: map,
         icon: icon_data,
         shape: shape,
-        title: site_data.Site
+        title: cip(site_data, 'site')
     });
 
     // Get a nice HTML message to attach to the popup:
@@ -95,6 +95,8 @@ function set_marker(map, site_data){
 }
 
 function get_flag_url(flag_no){
+    // If a flag number is out of bounds, or missing, then use
+    // the "unknown" flag.
     if (flag_no < 0 | flag_no >= flags.length | flag_no==null)
 	flag_no = 0
     return flags[flag_no]
@@ -106,13 +108,15 @@ special = {'_id':'', 'date':'', 'site':'', 'latitude':'',
 	   'longitude':'', 'comment':'', 'flag':''};
 
 function get_html_msg(site_data){
-    // Given some row data, returns a nice HTML summary
-    result = "<h1>" + site_data.Site + "</h1>";
-    result += "<p><b>Sampling date: </b><br/>" + site_data.Date.format("YYYY-MM-DD") + "</p>";
-    result += "<p><b>Comments:</b><br/>" + site_data.Comment + "</p>";
+    // Given some row data, returns a nice HTML summary.
+    result = "<h1>" + cip(site_data, 'site') + "</h1>";
+    result += "<p><b>Sampling date: </b><br/>" + cip(site_data, 'date').format("YYYY-MM-DD") + "</p>";
+    result += "<p><b>Comments:</b><br/>" + cip(site_data, 'comment') + "</p>";
     result += "<p><b>Data:</b></p>";
     result += "<table border=1>"
     for (column in site_data){
+	// Check to see if this a "special" column. Those are either skipped,
+	// or handled separately. Otherwise, include the data.
 	if (!(column.toLowerCase() in special)){
 	    result += "<tr>";
 	    result += "<td class='column_name'>"  + column            + "</td>";
@@ -125,6 +129,9 @@ function get_html_msg(site_data){
 }
 
 function attach_window(marker, msg) {
+    /*
+     * Put a message in an InfoWindow, then associate it with a marker.
+     */
     var infowindow = new google.maps.InfoWindow({
 	content: msg
     });
@@ -132,3 +139,16 @@ function attach_window(marker, msg) {
 	infowindow.open(marker.get('map'), marker);
     });
 }
+
+function cip(obj, prop){
+    /*
+     * Retrieve a "case-insensitive property" (cip)
+     */
+    var test_prop = prop.toLowerCase();
+    for(var attr in obj){
+	if (attr.toLowerCase() == test_prop)
+	    return obj[attr];
+    };
+    return null;
+}
+
