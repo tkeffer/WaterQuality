@@ -2,12 +2,12 @@
  * Retrieves water quality info from a Google spreadsheet, then displays it
  * on a map. Clicking on one of the flags brings up a popup with details.
  *
- * Tom Keffer 2013-11-28
+ * Tom Keffer 2013-12-10
  *
  * TODOs:
  *  o Better looking flags.
  *  o Bilingual labels.
- *  o Clicking a new popup should close the old one.
+ *  o Function get_html_msg is very clumsy. Perhaps use a Handlebars template?
  */
 
 var spreadsheet_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
@@ -150,27 +150,39 @@ special = {'Date':'', 'SITIO':'', 'comment':'', 'flag':''};
 
 function get_html_msg(site_row, site_data){
     // Given some row data, returns a nice HTML summary.
-    var result = "<h1>" + cip(site_row, 'sitio') + "</h1>";
+    var result = "<div class='popup_box'>";
+    result += "<h1>" + cip(site_row, 'sitio') + "</h1>";
+    result += "<div class='popup_photo'>";
     result += "<h2>Photo</h2>";
-    result += "<img src='images/" + site_row.SITIO + ".jpg'></img>";
+    result += "<img src='images/" + site_row.SITIO + ".jpg' width=300 height=300></img>";
+    result += "</div> <!-- end class popup_photo -->";
+    if (site_row.Description != null) {
+	result += "<div class='popup_description'>";
+	result += "<h2>Description</h2>";
+	result += site_row.Description;
+	result += "</div> <!-- end class popup_description -->";
+    }
+    result += "<div class=popup_data>";
     result += "<h2>Historical Data:</h2>";
     result += "<table border=1>";
     column_names = site_data.columnNames();
     result += "<tr>";
     for (i=0; i<column_names.length; i++){
 	if (!(column_names[i] in special))
-	    result += "<td class='column_name'>" + column_names[i] + "</td>";
+	    result += "<td class='popup_column_name'>" + column_names[i] + "</td>";
     }
     result += "</tr>";
     site_data.each(function (row_data){
 	result += "<tr>";
 	for (i=0; i<column_names.length; i++){
 	    if (!(column_names[i] in special))
-		result += "<td class='column_value'>" + row_data[column_names[i]] + "</td>";
+		result += "<td class='popup_column_value'>" + row_data[column_names[i]] + "</td>";
 	};
 	result += "</tr>";
     });
     result += "</table>";
+    result += "</div> <!-- end class popup_data -->";
+    result += "</div> <!-- end class popup_box -->";
     return result;
 }
 
