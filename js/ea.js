@@ -6,6 +6,8 @@
  *
  * TODOs:
  *  o Better looking flags.
+ *  o Bilingual labels.
+ *  o Clicking a new popup should close the old one.
  */
 
 var spreadsheet_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
@@ -118,6 +120,23 @@ function setup_site_popup(map, site_row, site_data){
     attach_window(marker, html_msg);
 }
 
+var infowindow = null;
+
+function attach_window(marker, msg) {
+    /*
+     * Put a message in an InfoWindow, then associate it with a marker.
+     */
+    google.maps.event.addListener(marker, 'click', function() {
+	if (infowindow){
+	    infowindow.close();
+	}
+	infowindow = new google.maps.InfoWindow({
+	    content: msg
+	});
+	infowindow.open(marker.map, marker);
+    });
+}
+
 function get_flag_url(flag_no){
     // If a flag number is out of bounds, or missing, then use
     // the "unknown" flag.
@@ -132,7 +151,9 @@ special = {'Date':'', 'SITIO':'', 'comment':'', 'flag':''};
 function get_html_msg(site_row, site_data){
     // Given some row data, returns a nice HTML summary.
     var result = "<h1>" + cip(site_row, 'sitio') + "</h1>";
-    result += "<p><b>Historical Data:</b></p>";
+    result += "<h2>Photo</h2>";
+    result += "<img src='images/" + site_row.SITIO + ".jpg'></img>";
+    result += "<h2>Historical Data:</h2>";
     result += "<table border=1>";
     column_names = site_data.columnNames();
     result += "<tr>";
@@ -151,18 +172,6 @@ function get_html_msg(site_row, site_data){
     });
     result += "</table>";
     return result;
-}
-
-function attach_window(marker, msg) {
-    /*
-     * Put a message in an InfoWindow, then associate it with a marker.
-     */
-    var infowindow = new google.maps.InfoWindow({
-	content: msg
-    });
-    google.maps.event.addListener(marker, 'click', function() {
-	infowindow.open(marker.get('map'), marker);
-    });
 }
 
 function cip(obj, prop){
