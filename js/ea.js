@@ -8,6 +8,8 @@
  *  o Better looking flags.
  */
 
+var spreadsheet_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
+
 // Shape of the clickable polygon around each marker
 var shape = {
     coord: [1, 1, 1, 20, 18, 20, 18 , 1],
@@ -24,17 +26,25 @@ var flags = [
 
 function initialize() {
 
-    var ds = new Miso.Dataset({
+    var data_ds = new Miso.Dataset({
 	importer : Miso.Dataset.Importers.GoogleSpreadsheet,
 	parser : Miso.Dataset.Parsers.GoogleSpreadsheet,
-	key : "0Ar8LDnqhlSk_dHFpMDB5YXBIVHc5UmlQX25nalY5V3c",
+	key : spreadsheet_key,
 	worksheet : "1",
 	columns: [{name:"Date", type:"time"}]
     });
 
-    // Now go fetch the dataset. The return value, result, will be a deferred.
+    var site_ds = new Miso.Dataset({
+	importer : Miso.Dataset.Importers.GoogleSpreadsheet,
+	parser : Miso.Dataset.Parsers.GoogleSpreadsheet,
+	key : spreadsheet_key,
+	worksheet : "2",
+    });
+
+    // Now go fetch the datasets. The return value will be a deferred.
     // We'll evaluate it when we're ready.
-    var result = ds.fetch();
+    var site_deferred = site_ds.fetch();
+    var data_deferred = data_ds.fetch();
 
     // Set up the map.
     var mapOptions = {
@@ -44,28 +54,42 @@ function initialize() {
     var map = new google.maps.Map(document.getElementById('map-canvas'),
                                   mapOptions);
 
-    // The map is done. Wait for the deferred to be done, then populate the map 
-    // with the sampling sites.
-    result.done(function(ds){
-	// Iterate over each row in the dataset. Each is a sampling site.
-	ds.each(function(site){
-	    // Add a marker for this site
-	    set_marker(map, site);
-	});
-    });
-    result.fail(function(ds){
-	console.log("Failed. Are you connected to the Internet?");
-    });
-
+    // Wait for the two deferreds to be resolved, then set up the flags
+    _.when(site_deferred, data_deferred)
+	.then(
+	    function(site_ds, data_ds){
+		// site_ds: The Miso Dataset holding the site information
+		// data_ds: THe Miso Dataset holding the data information
+		// Iterate over each row in the site dataset.
+		// Each will be a unique sampling site.
+		site_ds.each(function(site_row){
+		    // Filter the data dataset, keeping only the
+		    // data for this site.
+		    var site_data = data_ds.where(function(row){
+			return row.SITIO === site_row.SITIO;
+		    });
+		    // Add a marker for this site
+		    setup_site_popup(map, site_row, site_data);
+		});
+	    },
+	    function(){
+		console.log("Failed. Are you connected to the Internet?");
+	    }
+	);
 }
 
-function set_marker(map, site_data){
+function setup_site_popup(map, site_row, site_data){
 
-    var myLatLng = new google.maps.LatLng(cip(site_data, 'latitude'),
-					  cip(site_data, 'longitude'));
+    var latitude = cip(site_row, 'latitude');
+    var longitude = cip(site_row, 'longitude');
+    if (latitude == null || longitude == null){
+	console.log(cip(site_row, 'sitio'), " location unknown.");
+	return
+    }
+    var myLatLng = new google.maps.LatLng(latitude, longitude);
 
-    // Get the url for the flag to be used for this site
-    var flag_url = get_flag_url(cip(site_data, "flag"));
+    //    var flag_url = get_flag_url(cip(site_row, "flag"));
+    var flag_url = get_flag_url(1);
 
     // The icon data for the site marker
     var icon_data = {
@@ -84,11 +108,11 @@ function set_marker(map, site_data){
         map: map,
         icon: icon_data,
         shape: shape,
-        title: cip(site_data, 'site')
+        title: cip(site_row, 'sitio')
     });
 
     // Get a nice HTML message to attach to the popup:
-    html_msg = get_html_msg(site_data);
+    html_msg = get_html_msg(site_row, site_data);
 
     // Now attach it.
     attach_window(marker, html_msg);
@@ -102,30 +126,31 @@ function get_flag_url(flag_no){
     return flags[flag_no]
 }
 
-// These column types are either not included in the popup summary, or
-// they are treated separately.
-special = {'_id':'', 'date':'', 'site':'', 'latitude':'', 
-	   'longitude':'', 'comment':'', 'flag':''};
+// These column types are dropped from the popup summary
+special = {'Date':'', 'SITIO':'', 'comment':'', 'flag':''};
 
-function get_html_msg(site_data){
+function get_html_msg(site_row, site_data){
     // Given some row data, returns a nice HTML summary.
-    result = "<h1>" + cip(site_data, 'site') + "</h1>";
-    result += "<p><b>Sampling date: </b><br/>" + cip(site_data, 'date').format("YYYY-MM-DD") + "</p>";
-    result += "<p><b>Comments:</b><br/>" + cip(site_data, 'comment') + "</p>";
-    result += "<p><b>Data:</b></p>";
-    result += "<table border=1>"
-    for (column in site_data){
-	// Check to see if this a "special" column. Those are either skipped,
-	// or handled separately. Otherwise, include the data.
-	if (!(column.toLowerCase() in special)){
-	    result += "<tr>";
-	    result += "<td class='column_name'>"  + column            + "</td>";
-	    result += "<td class='column_value'>" + site_data[column] + "</td>";
-	    result += "</tr>";
+    var result = "<h1>" + cip(site_row, 'sitio') + "</h1>";
+    result += "<p><b>Historical Data:</b></p>";
+    result += "<table border=1>";
+    column_names = site_data.columnNames();
+    result += "<tr>";
+    for (i=0; i<column_names.length; i++){
+	if (!(column_names[i] in special))
+	    result += "<td class='column_name'>" + column_names[i] + "</td>";
+    }
+    result += "</tr>";
+    site_data.each(function (row_data){
+	result += "<tr>";
+	for (i=0; i<column_names.length; i++){
+	    if (!(column_names[i] in special))
+		result += "<td class='column_value'>" + row_data[column_names[i]] + "</td>";
 	};
-    };
-    result += "</table>"
-    return result
+	result += "</tr>";
+    });
+    result += "</table>";
+    return result;
 }
 
 function attach_window(marker, msg) {
