@@ -33,7 +33,7 @@ function initialize() {
 	parser : Miso.Dataset.Parsers.GoogleSpreadsheet,
 	key : spreadsheet_key,
 	worksheet : "1",
-	columns: [{name:"Date", type:"time"}]
+	columns: [{name:"FECHA", type:"time"}, {name:"HORA", type:"time"}]
     });
 
     var site_ds = new Miso.Dataset({
@@ -146,7 +146,7 @@ function get_flag_url(flag_no){
 }
 
 // These column types are dropped from the popup summary
-special = {'Date':'', 'SITIO':'', 'comment':'', 'flag':''};
+special = {'SITIO':'', 'comment':'', 'flag':''};
 
 function get_html_msg(site_row, site_data){
     // Given some row data, returns a nice HTML summary.
