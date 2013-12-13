@@ -8,9 +8,10 @@
  *  o Better looking flags.
  *  o Bilingual labels.
  *  o Function get_html_msg is very clumsy. Perhaps use a Handlebars template?
+ *  o Add sizing box to popup
+ *  o Allow touchscreen scrolling of map
  */
 
-var spreadsheet_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
 
 // Shape of the clickable polygon around each marker
 var shape = {
@@ -26,27 +27,7 @@ var flags = [
     'images/unhealthy.png'
 ];
 
-function initialize() {
-
-    var data_ds = new Miso.Dataset({
-	importer : Miso.Dataset.Importers.GoogleSpreadsheet,
-	parser : Miso.Dataset.Parsers.GoogleSpreadsheet,
-	key : spreadsheet_key,
-	worksheet : "1",
-	columns: [{name:"FECHA", type:"time"}, {name:"HORA", type:"time"}]
-    });
-
-    var site_ds = new Miso.Dataset({
-	importer : Miso.Dataset.Importers.GoogleSpreadsheet,
-	parser : Miso.Dataset.Parsers.GoogleSpreadsheet,
-	key : spreadsheet_key,
-	worksheet : "2",
-    });
-
-    // Now go fetch the datasets. The return value will be a deferred.
-    // We'll evaluate it when we're ready.
-    var site_deferred = site_ds.fetch();
-    var data_deferred = data_ds.fetch();
+function initialize(spreadsheet_key) {
 
     // Set up the map.
     var mapOptions = {
@@ -56,41 +37,34 @@ function initialize() {
     var map = new google.maps.Map(document.getElementById('map-canvas'),
                                   mapOptions);
 
-    // Wait for the two deferreds to be resolved, then set up the flags
-    _.when(site_deferred, data_deferred)
-	.then(
-	    function(site_ds, data_ds){
-		// site_ds: The Miso Dataset holding the site information
-		// data_ds: THe Miso Dataset holding the data information
-		// Iterate over each row in the site dataset.
-		// Each will be a unique sampling site.
-		site_ds.each(function(site_row){
-		    // Filter the data dataset, keeping only the
-		    // data for this site.
-		    var site_data = data_ds.where(function(row){
-			return row.SITIO === site_row.SITIO;
-		    });
-		    // Add a marker for this site
-		    setup_site_popup(map, site_row, site_data);
-		});
-	    },
-	    function(){
-		console.log("Failed. Are you connected to the Internet?");
-	    }
-	);
+    Tabletop.init({key : spreadsheet_key,
+		   callback: process_data,
+		   simpleSheet: false
+		  }
+		 );
+
+    function process_data(data, tabletop){
+
+	for (i=0; i<data.sitios.elements.length; i++){
+	    site_info = data.sitios.elements[i];
+	    console.log(site_info);
+	    var site_data = jQuery.grep(data.Data.elements, function(row,i){
+		return row.sitio == site_info.sitio;
+	    });
+	    mark_sites(map, site_info, site_data);
+	}
+    }
 }
 
-function setup_site_popup(map, site_row, site_data){
+function mark_sites(map, site_info, site_data){
 
-    var latitude = cip(site_row, 'latitude');
-    var longitude = cip(site_row, 'longitude');
-    if (latitude == null || longitude == null){
-	console.log(cip(site_row, 'sitio'), " location unknown.");
+    if (site_info.latitude == null || site_info.longitude == null){
+	console.log(site_info.sitio, " location unknown.");
 	return
     }
-    var myLatLng = new google.maps.LatLng(latitude, longitude);
+    var myLatLng = new google.maps.LatLng(site_info.latitude, site_info.longitude);
 
-    //    var flag_url = get_flag_url(cip(site_row, "flag"));
+    // For now, hardwire the flag to flag #1 (green)
     var flag_url = get_flag_url(1);
 
     // The icon data for the site marker
@@ -110,14 +84,14 @@ function setup_site_popup(map, site_row, site_data){
         map: map,
         icon: icon_data,
         shape: shape,
-        title: cip(site_row, 'sitio')
+        title: site_info.sitio
     });
 
-    // Get a nice HTML message to attach to the popup:
-    html_msg = get_html_msg(site_row, site_data);
+    marker.site_info = site_info;
+    marker.site_data = site_data;
 
     // Now attach it.
-    attach_window(marker, html_msg);
+    attach_window(marker, "<p>foo</p>");
 }
 
 var infowindow = null;
@@ -130,8 +104,11 @@ function attach_window(marker, msg) {
 	if (infowindow){
 	    infowindow.close();
 	}
+	var source   = $("#popup-template").html();
+	var template = Handlebars.compile(source);
+	var html = template();
 	infowindow = new google.maps.InfoWindow({
-	    content: msg
+	    content: html
 	});
 	infowindow.open(marker.map, marker);
     });
@@ -145,56 +122,44 @@ function get_flag_url(flag_no){
     return flags[flag_no]
 }
 
-// These column types are dropped from the popup summary
-special = {'SITIO':'', 'comment':'', 'flag':''};
+// // These column types are dropped from the popup summary
+// special = {'SITIO':'', 'comment':'', 'flag':''};
 
-function get_html_msg(site_row, site_data){
-    // Given some row data, returns a nice HTML summary.
-    var result = "<div class='popup_box'>";
-    result += "<h1>" + cip(site_row, 'sitio') + "</h1>";
-    result += "<div class='popup_photo'>";
-    result += "<h2>Photo</h2>";
-    result += "<img src='images/" + site_row.SITIO + ".jpg' width=300 height=300></img>";
-    result += "</div> <!-- end class popup_photo -->";
-    if (site_row.Description != null) {
-	result += "<div class='popup_description'>";
-	result += "<h2>Description</h2>";
-	result += site_row.Description;
-	result += "</div> <!-- end class popup_description -->";
-    }
-    result += "<div class=popup_data>";
-    result += "<h2>Historical Data:</h2>";
-    result += "<table border=1>";
-    column_names = site_data.columnNames();
-    result += "<tr>";
-    for (i=0; i<column_names.length; i++){
-	if (!(column_names[i] in special))
-	    result += "<td class='popup_column_name'>" + column_names[i] + "</td>";
-    }
-    result += "</tr>";
-    site_data.each(function (row_data){
-	result += "<tr>";
-	for (i=0; i<column_names.length; i++){
-	    if (!(column_names[i] in special))
-		result += "<td class='popup_column_value'>" + row_data[column_names[i]] + "</td>";
-	};
-	result += "</tr>";
-    });
-    result += "</table>";
-    result += "</div> <!-- end class popup_data -->";
-    result += "</div> <!-- end class popup_box -->";
-    return result;
-}
-
-function cip(obj, prop){
-    /*
-     * Retrieve a "case-insensitive property" (cip)
-     */
-    var test_prop = prop.toLowerCase();
-    for(var attr in obj){
-	if (attr.toLowerCase() == test_prop)
-	    return obj[attr];
-    };
-    return null;
-}
+// function get_html_msg(site_row, site_data){
+//     // Given some row data, returns a nice HTML summary.
+//     var result = "<div class='popup_box'>";
+//     result += "<h1>" + cip(site_row, 'sitio') + "</h1>";
+//     result += "<div class='popup_photo'>";
+//     result += "<h2>Photo</h2>";
+//     result += "<img src='images/" + site_row.SITIO + ".jpg' width=300 height=300></img>";
+//     result += "</div> <!-- end class popup_photo -->";
+//     if (site_row.Description != null) {
+// 	result += "<div class='popup_description'>";
+// 	result += "<h2>Description</h2>";
+// 	result += site_row.Description;
+// 	result += "</div> <!-- end class popup_description -->";
+//     }
+//     result += "<div class=popup_data>";
+//     result += "<h2>Historical Data:</h2>";
+//     result += "<table border=1>";
+//     column_names = site_data.columnNames();
+//     result += "<tr>";
+//     for (i=0; i<column_names.length; i++){
+// 	if (!(column_names[i] in special))
+// 	    result += "<td class='popup_column_name'>" + column_names[i] + "</td>";
+//     }
+//     result += "</tr>";
+//     site_data.each(function (row_data){
+// 	result += "<tr>";
+// 	for (i=0; i<column_names.length; i++){
+// 	    if (!(column_names[i] in special))
+// 		result += "<td class='popup_column_value'>" + row_data[column_names[i]] + "</td>";
+// 	};
+// 	result += "</tr>";
+//     });
+//     result += "</table>";
+//     result += "</div> <!-- end class popup_data -->";
+//     result += "</div> <!-- end class popup_box -->";
+//     return result;
+// }
 

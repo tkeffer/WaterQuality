@@ -49,19 +49,29 @@
       }
     </style>
     <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
-    <script src="js/development/lib/json2.js" type="text/javascript"></script>
-    <script src="js/development/lib/lodash.js" type="text/javascript"></script>
-    <script src="js/development/lib/miso.events.js" type="text/javascript"></script>
-    <script src="js/development/lib/moment.js" type="text/javascript"></script>
-    <script src="js/development/lib/underscore.deferred.js" type="text/javascript"></script>
-    <script src="js/development/lib/underscore.math.js" type="text/javascript"></script>
-    <script src="js/development/miso.ds.0.4.0.js" type="text/javascript"></script>
-    <script src="js/ea.js"></script>
+    <script src="js/development/lib/tabletop.js" type="text/javascript"></script>
+    <script src="js/development/lib/jquery.js" type="text/javascript"></script>
+    <script src="js/development/lib/handlebars.js" type="text/javascript"></script>
+    <script src="js/ea.js" type="text/javascript"></script>
     <script>
-      google.maps.event.addDomListener(window, 'load', initialize);
+      var spreadsheet_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
+      google.maps.event.addDomListener(window, 'load', function(){initialize(spreadsheet_key);});
     </script>
   </head>
   <body>
+    <script id="popup-template" type="text/x-handlebars-template">
+      <div class="popup_box">
+        <div class="popup_photo">
+          <p>photo goes here</p>
+        </div> <!-- End popup_photo -->
+        <div class="popup_description">
+          <h2>Description</h2>
+        </div> <!-- End popup_description -->
+	<div class="popup_data">
+          <h2>Historical data</h2>
+        </div>    
+      </div> <!-- End popup_box -->
+    </script> <!-- End handlebars popup template -->
     <div id="map-canvas"></div>
   </body>
 </html>
