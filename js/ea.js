@@ -27,6 +27,8 @@ var flags = [
     'images/unhealthy.png'
 ];
 
+var template = null;
+
 function initialize(spreadsheet_key) {
 
     // Set up the map.
@@ -37,29 +39,64 @@ function initialize(spreadsheet_key) {
     var map = new google.maps.Map(document.getElementById('map-canvas'),
                                   mapOptions);
 
+    // Get and compile the Handlebars template
+    var source   = $("#popup-template").html();
+    template = new Handlebars.compile(source);
+
     Tabletop.init({key : spreadsheet_key,
 		   callback: process_data,
 		   simpleSheet: false
 		  }
 		 );
 
-    function process_data(data, tabletop){
+    function process_data(spreadsheet, tabletop){
 
-	for (i=0; i<data.sitios.elements.length; i++){
-	    site_info = data.sitios.elements[i];
-	    console.log(site_info);
-	    var site_data = jQuery.grep(data.Data.elements, function(row,i){
-		return row.sitio == site_info.sitio;
-	    });
-	    mark_sites(map, site_info, site_data);
+        // First, gather all the labels together
+        var labels = [];
+        for (i=0; i<spreadsheet.labels.column_names.length; i++){
+            var var_name = spreadsheet.labels.column_names[i];
+            labels.push(spreadsheet.labels.elements[0][var_name]);
+        }
+
+	// For each collection site, gather its data together
+	for (isite=0; isite<spreadsheet.sites.elements.length; isite++){
+
+	    // site_info will contain lat, lon, description, etc., for this site
+	    var site_info = spreadsheet.sites.elements[isite];
+            var site_name = site_info["site"];
+
+            site_info.data = filter_data(spreadsheet.data.elements,
+                                         site_name,
+                                         spreadsheet.labels.column_names);
+
+            // Add the labels
+            site_info.labels = labels;
+
+            console.log(site_info);
+	    mark_site(map, site_info);
 	}
     }
 }
 
-function mark_sites(map, site_info, site_data){
+function filter_data(dataset, site_name, desired_columns){
+    var result_set = [];
+    for (irow=0; irow<dataset.length; irow++){
+        if (dataset[irow]["sitio"] == site_name) {
+            var row_data = [];
+            for (icol=0; icol<desired_columns.length; icol++){
+                var var_name = desired_columns[icol];
+                row_data.push(dataset[irow][var_name]);
+            }
+            result_set.push(row_data);
+        }
+    }
+    return result_set;
+}
+
+function mark_site(map, site_info){
 
     if (site_info.latitude == null || site_info.longitude == null){
-	console.log(site_info.sitio, " location unknown.");
+	console.log(site_info.site, " location unknown.");
 	return
     }
     var myLatLng = new google.maps.LatLng(site_info.latitude, site_info.longitude);
@@ -84,19 +121,18 @@ function mark_sites(map, site_info, site_data){
         map: map,
         icon: icon_data,
         shape: shape,
-        title: site_info.sitio
+        title: site_info.site
     });
 
+    // Store away the site information:
     marker.site_info = site_info;
-    marker.site_data = site_data;
 
-    // Now attach it.
-    attach_window(marker, "<p>foo</p>");
+    attach_window(marker);
 }
 
 var infowindow = null;
 
-function attach_window(marker, msg) {
+function attach_window(marker) {
     /*
      * Put a message in an InfoWindow, then associate it with a marker.
      */
@@ -104,9 +140,10 @@ function attach_window(marker, msg) {
 	if (infowindow){
 	    infowindow.close();
 	}
-	var source   = $("#popup-template").html();
-	var template = Handlebars.compile(source);
-	var html = template();
+	// Retrieve the site information
+	site_info = this.site_info;
+	console.log("site_info=", site_info);
+	var html = template(site_info);
 	infowindow = new google.maps.InfoWindow({
 	    content: html
 	});

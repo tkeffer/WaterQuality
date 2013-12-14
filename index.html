@@ -30,6 +30,9 @@
       }
       .popup_box {
       }
+      .popup_box td{
+        border: 1px solid black;
+      }
       .popup_photo {
         width: 45%;
         float: left;
@@ -43,6 +46,7 @@
       }
       .popup_column_name {
         font-weight: bold;
+        padding: 4px;
       }
       .popup_column_value {
         text-align: right;
@@ -62,13 +66,39 @@
     <script id="popup-template" type="text/x-handlebars-template">
       <div class="popup_box">
         <div class="popup_photo">
-          <p>photo goes here</p>
+          <h2>Photo</h2>
+          <img src="images/{{site}}.jpg" width=300 height=300></img>
         </div> <!-- End popup_photo -->
         <div class="popup_description">
           <h2>Description</h2>
+          {{description}}
         </div> <!-- End popup_description -->
-	<div class="popup_data">
+        <div class="popup_data">
           <h2>Historical data</h2>
+          <table>
+            <tr>
+              {{! Iterate over each column heading }}
+              {{#each labels}}
+                <td class="popup_column_name">{{{this}}}</td>
+              {{/each}}
+            </tr>
+            {{! Iterate over each row of data }}
+            {{#each data}}
+              <tr>
+                {{! Finally, iterate over each data cell in the row }}
+                {{#each this}}
+                  <td class="popup_column_value">
+                  {{#if this}}
+                    {{this}}
+                  {{else}}
+                    N/A
+                  {{/if}}
+                  </td>
+                {{/each}}
+              </tr>
+            {{/each}}
+          </table>
+          </ul>
         </div>    
       </div> <!-- End popup_box -->
     </script> <!-- End handlebars popup template -->
