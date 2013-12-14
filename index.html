@@ -11,10 +11,6 @@
         margin: 5px;
         padding: 0px;
       }
-      #top-photo {
-        width: 824px;
-        margin:0 auto;
-      }
       #map-canvas {
         height: 90%;
       }
@@ -28,21 +24,12 @@
         border-spacing: 0;
         border-collapse: collapse;
       }
-      .popup_box {
-      }
-      .popup_box td{
-        border: 1px solid black;
-      }
       .popup_photo {
-        width: 45%;
-        float: left;
       }
       .popup_description{
-        width: 45%;
-        float: right;
       }
-      .popup_data {
-        clear: both;
+      .popup_data td{
+        border: 1px solid black;
       }
       .popup_column_name {
         font-weight: bold;
@@ -63,46 +50,52 @@
       google.maps.event.addDomListener(window, 'load', function(){initialize(spreadsheet_key);});
     </script>
   </head>
+
   <body>
-    <script id="popup-template" type="text/x-handlebars-template">
-      <div class="popup_box">
-        <div class="popup_photo">
-          <h2>Photo</h2>
-          <img src="images/{{site}}.jpg" width=300 height=300></img>
-        </div> <!-- End popup_photo -->
-        <div class="popup_description">
-          <h2>Description</h2>
-          {{description}}
-        </div> <!-- End popup_description -->
-        <div class="popup_data">
-          <h2>Historical data</h2>
-          <table>
+
+    <script id="photo-template" type="text/x-handlebars-template">
+      <div class="popup_photo">
+        <h2>Photo</h2>
+        <img src="images/{{site}}.jpg" width="300px" height="300px"></img>
+      </div> <!-- End popup_photo -->
+    </script>
+
+    <script id="description-template" type="text/x-handlebars-template">
+      <div class="popup_description">
+        <h2>Description</h2>
+        {{description}}
+      </div> <!-- End popup_description -->
+    </script>
+
+    <script id="data-template" type="text/x-handlebars-template">
+      <div class="popup_data">
+        <h2>Historical data</h2>
+        <table>
+          <tr>
+            {{! Iterate over each column heading }}
+            {{#each labels}}
+              <td class="popup_column_name">{{{this}}}</td>
+            {{/each}}
+          </tr>
+          {{! Iterate over each row of data }}
+          {{#each data}}
             <tr>
-              {{! Iterate over each column heading }}
-              {{#each labels}}
-                <td class="popup_column_name">{{{this}}}</td>
+              {{! Finally, iterate over each data cell in the row }}
+              {{#each this}}
+                <td class="popup_column_value">
+                {{#if this}}
+                  {{this}}
+                {{else}}
+                  N/A
+                {{/if}}
+                </td>
               {{/each}}
             </tr>
-            {{! Iterate over each row of data }}
-            {{#each data}}
-              <tr>
-                {{! Finally, iterate over each data cell in the row }}
-                {{#each this}}
-                  <td class="popup_column_value">
-                  {{#if this}}
-                    {{this}}
-                  {{else}}
-                    N/A
-                  {{/if}}
-                  </td>
-                {{/each}}
-              </tr>
-            {{/each}}
-          </table>
-          </ul>
-        </div>    
-      </div> <!-- End popup_box -->
-    </script> <!-- End handlebars popup template -->
+          {{/each}}
+        </table>
+      </div>  <!-- End div popup_data -->
+    </script> <!-- End handlebars data-template -->
+
     <div id="map-canvas"></div>
   </body>
 </html>

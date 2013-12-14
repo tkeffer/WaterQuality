@@ -27,7 +27,9 @@ var flags = [
     'images/unhealthy.png'
 ];
 
-var template = null;
+var photo_template = null;
+var description_template = null;
+var data_template = null;
 
 function initialize(spreadsheet_key) {
 
@@ -39,10 +41,11 @@ function initialize(spreadsheet_key) {
     var map = new google.maps.Map(document.getElementById('map-canvas'),
                                   mapOptions);
 
-    // Get and compile the Handlebars template
-    var source   = $("#popup-template").html();
-    template = new Handlebars.compile(source);
-
+    // Get and compile the Handlebars templates
+    photo_template = new Handlebars.compile($("#photo-template").html());
+    description_template = new Handlebars.compile($("#description-template").html());
+    data_template = new Handlebars.compile($("#data-template").html());
+                                            
     Tabletop.init({key : spreadsheet_key,
 		   callback: process_data,
 		   simpleSheet: false
@@ -143,11 +146,12 @@ function attach_window(marker) {
 	// Retrieve the site information
 	site_info = this.site_info;
 	console.log("site_info=", site_info);
-	var html = template(site_info);
+//	var html = template(site_info);
 //	infowindow = new google.maps.InfoWindow({
-	infowindow = new InfoBubble({
-	    content: html
-	});
+	infowindow = new InfoBubble();
+        infowindow.addTab('Photo', photo_template(site_info));
+        infowindow.addTab('Description', description_template(site_info));
+        infowindow.addTab('Data', data_template(site_info));
 	infowindow.open(marker.map, marker);
     });
 }
