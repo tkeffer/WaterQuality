@@ -6,10 +6,9 @@
  *
  * TODOs:
  *  o Better looking flags.
- *  o Bilingual labels.
- *  o Function get_html_msg is very clumsy. Perhaps use a Handlebars template?
  *  o Add sizing box to popup
  *  o Allow touchscreen scrolling of map
+ *  o Trim size of photos to 300x300
  */
 
 
@@ -27,7 +26,6 @@ var flags = [
     'images/unhealthy.png'
 ];
 
-var photo_template = null;
 var description_template = null;
 var data_template = null;
 
@@ -42,7 +40,6 @@ function initialize(spreadsheet_key) {
                                   mapOptions);
 
     // Get and compile the Handlebars templates
-    photo_template = new Handlebars.compile($("#photo-template").html());
     description_template = new Handlebars.compile($("#description-template").html());
     data_template = new Handlebars.compile($("#data-template").html());
                                             
@@ -149,7 +146,6 @@ function attach_window(marker) {
 //	var html = template(site_info);
 //	infowindow = new google.maps.InfoWindow({
 	infowindow = new InfoBubble();
-        infowindow.addTab('Photo', photo_template(site_info));
         infowindow.addTab('Description', description_template(site_info));
         infowindow.addTab('Data', data_template(site_info));
 	infowindow.open(marker.map, marker);
