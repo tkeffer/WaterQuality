@@ -144,7 +144,8 @@ function attach_window(marker) {
 	site_info = this.site_info;
 	console.log("site_info=", site_info);
 	var html = template(site_info);
-	infowindow = new google.maps.InfoWindow({
+//	infowindow = new google.maps.InfoWindow({
+	infowindow = new InfoBubble({
 	    content: html
 	});
 	infowindow.open(marker.map, marker);
