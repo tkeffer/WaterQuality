@@ -137,14 +137,14 @@ function attach_window(marker) {
      * Put a message in an InfoWindow, then associate it with a marker.
      */
     google.maps.event.addListener(marker, 'click', function() {
+        // If a window is already open, close it.
 	if (infowindow){
 	    infowindow.close();
 	}
 	// Retrieve the site information
 	site_info = this.site_info;
-	console.log("site_info=", site_info);
-//	var html = template(site_info);
-//	infowindow = new google.maps.InfoWindow({
+
+        // Open up an InfoBubble window and populate it with a couple of tabs:
 	infowindow = new InfoBubble();
         infowindow.addTab('Description', description_template(site_info));
         infowindow.addTab('Data', data_template(site_info));

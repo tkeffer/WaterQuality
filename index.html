@@ -34,12 +34,16 @@
       .popup_data td{
         border: 1px solid black;
       }
-      .popup_column_name {
-        font-weight: bold;
+      .popup_cell_name, .popup_cell_value, .popup_cell_null {
+        text-align: right;
         padding: 4px;
       }
-      .popup_column_value {
-        text-align: right;
+      .popup_cell_name {
+        font-weight: bold;
+      }
+      .popup_cell_null {
+        font-style: italic;
+        font-weight: lighter;
       }
     </style>
     <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
@@ -74,21 +78,19 @@
           <tr>
             {{! Iterate over each column heading }}
             {{#each labels}}
-              <td class="popup_column_name">{{{this}}}</td>
+              <td class="popup_cell_name">{{{this}}}</td>
             {{/each}}
           </tr>
           {{! Iterate over each row of data }}
           {{#each data}}
             <tr>
-              {{! Finally, iterate over each data cell in the row }}
+              {{! Now iterate over each data cell in the row }}
               {{#each this}}
-                <td class="popup_column_value">
                 {{#if this}}
-                  {{this}}
+                  <td class="popup_cell_value">{{this}}</td>
                 {{else}}
-                  N/A
+                  <td class="popup_cell_null">(N/A)</td>
                 {{/if}}
-                </td>
               {{/each}}
             </tr>
           {{/each}}
