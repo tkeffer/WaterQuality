@@ -2,4 +2,3 @@ TODOs:
 
 Allow the label spreadsheet to be separated from the data spreadsheet.
 
-Better looking flags.
