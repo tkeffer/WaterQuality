@@ -4,13 +4,23 @@
  *
  * Tom Keffer 2013-12-10
  *
- * TODOs:
- *  o Better looking flags.
- *  o Add sizing box to popup
- *  o Allow touchscreen scrolling of map
- *  o Trim size of photos to 300x300
  */
 
+// How old a sample can be and still be used to determine water
+// quality (in milliseconds):
+var max_stale = 15 * 24 * 3600 * 1000;  // = 15 days
+
+// The cutoffs for bacterial counts:
+var bact_good = 99;
+var bact_caution = 199;
+
+// Flags to be used as markers.
+var flags = {
+    'unknown'   : 'images/unknown.png',
+    'good'      : 'images/good.png',
+    'caution'   : 'images/caution.png',
+    'unhealthy' : 'images/unhealthy.png'
+};
 
 // Shape of the clickable polygon around each marker
 var shape = {
@@ -18,14 +28,7 @@ var shape = {
     type: 'poly'
 };
 
-// Flags to be used as markers.
-var flags = [
-    'images/unknown.png',
-    'images/good.png',
-    'images/caution.png',
-    'images/unhealthy.png'
-];
-
+// These will hold the compiled Handlebars templates
 var description_template = null;
 var data_template = null;
 
@@ -36,20 +39,25 @@ function initialize(spreadsheet_key) {
 	zoom: 10,
 	center: new google.maps.LatLng(26.0, -111.3)
     }
+    // Fetch and start rendering:
     var map = new google.maps.Map(document.getElementById('map-canvas'),
                                   mapOptions);
 
     // Get and compile the Handlebars templates
     description_template = new Handlebars.compile($("#description-template").html());
     data_template = new Handlebars.compile($("#data-template").html());
-                                            
+    
+    // Get the spreadsheet data
     Tabletop.init({key : spreadsheet_key,
 		   callback: process_data,
 		   simpleSheet: false
 		  }
 		 );
 
+    // This function will be used to process the spreadsheet data
     function process_data(spreadsheet, tabletop){
+
+        console.log(spreadsheet);
 
         // First, gather all the labels together
         var labels = [];
@@ -58,8 +66,8 @@ function initialize(spreadsheet_key) {
             labels.push(spreadsheet.labels.elements[0][var_name]);
         }
 
-	// For each collection site, gather its data together
-	for (isite=0; isite<spreadsheet.sites.elements.length; isite++){
+        // For each collection site, gather its data together
+        for (isite=0; isite<spreadsheet.sites.elements.length; isite++){
 
 	    // site_info will contain lat, lon, description, etc., for this site
 	    var site_info = spreadsheet.sites.elements[isite];
@@ -72,10 +80,10 @@ function initialize(spreadsheet_key) {
             // Add the labels
             site_info.labels = labels;
 
-            console.log(site_info);
 	    mark_site(map, site_info);
-	}
+        }
     }
+
 }
 
 function filter_data(dataset, site_name, desired_columns){
@@ -90,6 +98,8 @@ function filter_data(dataset, site_name, desired_columns){
             result_set.push(row_data);
         }
     }
+    result_set.column_names = desired_columns;
+
     return result_set;
 }
 
@@ -101,8 +111,9 @@ function mark_site(map, site_info){
     }
     var myLatLng = new google.maps.LatLng(site_info.latitude, site_info.longitude);
 
-    // For now, hardwire the flag to flag #1 (green)
-    var flag_url = get_flag_url(1);
+    // Get the URL of the flag to be used for the marker
+    var q_summary = get_health_summary(site_info.data, max_stale);
+    var flag_url = flags[q_summary];
 
     // The icon data for the site marker
     var icon_data = {
@@ -152,52 +163,47 @@ function attach_window(marker) {
     });
 }
 
-function get_flag_url(flag_no){
-    // If a flag number is out of bounds, or missing, then use
-    // the "unknown" flag.
-    if (flag_no < 0 | flag_no >= flags.length | flag_no==null)
-	flag_no = 0
-    return flags[flag_no]
+var right_now = new Date().getTime();
+
+function get_health_summary(site_data, stale){
+    /*
+     * For this site, determine the whether the water quality
+     * is 'good', 'caution', or 'unhealthy'. If the sample is too
+     * old, or missing, then it's 'unknown'.
+     */
+
+    var date_col = site_data.column_names.indexOf("fecha");
+    var last_t = 0;
+    for (var irow=0; irow<site_data.length; irow++){
+        var t = Date.parse(site_data[irow][date_col]);
+        if (!isNaN(t)){
+            if (t > last_t){
+                // Record both the time and the row
+                last_t = t;
+                last_row = irow;
+            }
+        }
+    }
+
+    if (last_t < right_now - stale){
+        // Too old
+        return 'unknown';
+    }
+
+    var bact_col = site_data.column_names.indexOf("enterococos");
+    var bact_val = site_data[last_row][bact_col];
+
+    if (bact_val == null){
+        return 'unknown';
+    } 
+    else if (bact_val <= bact_good){
+        return 'good';
+    }
+    else if (bact_val <= bact_caution){
+        return 'caution';
+    }
+    else {
+        return 'unhealthy';
+    }
 }
-
-// // These column types are dropped from the popup summary
-// special = {'SITIO':'', 'comment':'', 'flag':''};
-
-// function get_html_msg(site_row, site_data){
-//     // Given some row data, returns a nice HTML summary.
-//     var result = "<div class='popup_box'>";
-//     result += "<h1>" + cip(site_row, 'sitio') + "</h1>";
-//     result += "<div class='popup_photo'>";
-//     result += "<h2>Photo</h2>";
-//     result += "<img src='images/" + site_row.SITIO + ".jpg' width=300 height=300></img>";
-//     result += "</div> <!-- end class popup_photo -->";
-//     if (site_row.Description != null) {
-// 	result += "<div class='popup_description'>";
-// 	result += "<h2>Description</h2>";
-// 	result += site_row.Description;
-// 	result += "</div> <!-- end class popup_description -->";
-//     }
-//     result += "<div class=popup_data>";
-//     result += "<h2>Historical Data:</h2>";
-//     result += "<table border=1>";
-//     column_names = site_data.columnNames();
-//     result += "<tr>";
-//     for (i=0; i<column_names.length; i++){
-// 	if (!(column_names[i] in special))
-// 	    result += "<td class='popup_column_name'>" + column_names[i] + "</td>";
-//     }
-//     result += "</tr>";
-//     site_data.each(function (row_data){
-// 	result += "<tr>";
-// 	for (i=0; i<column_names.length; i++){
-// 	    if (!(column_names[i] in special))
-// 		result += "<td class='popup_column_value'>" + row_data[column_names[i]] + "</td>";
-// 	};
-// 	result += "</tr>";
-//     });
-//     result += "</table>";
-//     result += "</div> <!-- end class popup_data -->";
-//     result += "</div> <!-- end class popup_box -->";
-//     return result;
-// }
 

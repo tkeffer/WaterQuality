@@ -1,0 +1,11 @@
+TODOs:
+
+Allow the label spreadsheet to be separated from the data spreadsheet.
+
+Better looking flags.
+
+Add sizing box to popup
+
+Allow touchscreen scrolling of map
+
+Trim size of photos to 300x300
