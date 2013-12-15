@@ -8,7 +8,7 @@
 
 // How old a sample can be and still be used to determine water
 // quality (in milliseconds):
-var max_stale = 15 * 24 * 3600 * 1000;  // = 15 days
+var max_age = 15 * 24 * 3600 * 1000;  // = 15 days
 
 // The cutoffs for bacterial counts:
 var bact_good = 99;
@@ -57,9 +57,7 @@ function initialize(spreadsheet_key) {
     // This function will be used to process the spreadsheet data
     function process_data(spreadsheet, tabletop){
 
-        console.log(spreadsheet);
-
-        // First, gather all the labels together
+        // First, gather all the labels for the data types
         var labels = [];
         for (i=0; i<spreadsheet.labels.column_names.length; i++){
             var var_name = spreadsheet.labels.column_names[i];
@@ -87,9 +85,14 @@ function initialize(spreadsheet_key) {
 }
 
 function filter_data(dataset, site_name, desired_columns){
+    // Go through all the data, selecting only the data for
+    // this site and only the desired data types
     var result_set = [];
+    // Iterate through all the data rows
     for (irow=0; irow<dataset.length; irow++){
+        // Select only sites matching the requested site
         if (dataset[irow]["sitio"] == site_name) {
+            // Select only columns matching the requested desired columns
             var row_data = [];
             for (icol=0; icol<desired_columns.length; icol++){
                 var var_name = desired_columns[icol];
@@ -98,13 +101,17 @@ function filter_data(dataset, site_name, desired_columns){
             result_set.push(row_data);
         }
     }
+    // Store the column names
     result_set.column_names = desired_columns;
 
     return result_set;
 }
 
 function mark_site(map, site_info){
+    // Mark the site on the map using a flag.
+    // Also, attach a popup window to the flag
 
+    // Make sure the site has a valid latitude & longitude
     if (site_info.latitude == null || site_info.longitude == null){
 	console.log(site_info.site, " location unknown.");
 	return
@@ -112,7 +119,7 @@ function mark_site(map, site_info){
     var myLatLng = new google.maps.LatLng(site_info.latitude, site_info.longitude);
 
     // Get the URL of the flag to be used for the marker
-    var q_summary = get_health_summary(site_info.data, max_stale);
+    var q_summary = get_health_summary(site_info.data, max_age);
     var flag_url = flags[q_summary];
 
     // The icon data for the site marker
@@ -173,6 +180,10 @@ function get_health_summary(site_data, stale){
      */
 
     var date_col = site_data.column_names.indexOf("fecha");
+`    // If there is no date column, return 'unknown'
+    if (date_col < 0){
+        return 'unknown';
+    }
     var last_t = 0;
     for (var irow=0; irow<site_data.length; irow++){
         var t = Date.parse(site_data[irow][date_col]);
