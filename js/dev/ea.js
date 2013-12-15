@@ -180,7 +180,7 @@ function get_health_summary(site_data, stale){
      */
 
     var date_col = site_data.column_names.indexOf("fecha");
-`    // If there is no date column, return 'unknown'
+    // If there is no date column, return 'unknown'
     if (date_col < 0){
         return 'unknown';
     }
