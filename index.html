@@ -20,8 +20,14 @@
       #map-canvas h2 {
         font-size: small;
       }
+      .popup_box {
+      }
       .popup_photo {
         float: left;
+      }
+      .popup_photo img {
+        height: 300px;
+        max-width: 300px;
       }
       .popup_description{
         margin-left: 10px;
@@ -61,14 +67,16 @@
   <body>
 
     <script id="description-template" type="text/x-handlebars-template">
-      <div class="popup_photo">
-        <h2>Photo</h2>
-        <img src="images/{{site}}.jpg" width="300px" height="300px"></img>
-      </div> <!-- End popup_photo -->
-      <div class="popup_description">
-        <h2>Description</h2>
-        {{{description}}}
-      </div> <!-- End popup_description -->
+      <div class="popup_box">
+        <div class="popup_photo">
+          <h2>Photo</h2>
+          <img src="images/{{site}}.jpg"></img>
+        </div> <!-- End popup_photo -->
+        <div class="popup_description">
+          <h2>Description</h2>
+          {{{description}}}
+        </div> <!-- End popup_description -->
+      </div> <!-- End popup_box -->
     </script>
 
     <script id="data-template" type="text/x-handlebars-template">
