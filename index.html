@@ -59,8 +59,12 @@
     <script src="js/dev/handlebars.js" type="text/javascript"></script>
     <script src="js/dev/ea.js" type="text/javascript"></script>
     <script>
-      var spreadsheet_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
-      google.maps.event.addDomListener(window, 'load', function(){initialize(spreadsheet_key);});
+      var data_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
+      var label_key = "0Ar8LDnqhlSk_dG5QYlB1ODd6Y0NDR3VCWHEzTnpZQlE";
+
+      google.maps.event.addDomListener(window, 'load', function(){
+          initialize(data_key, label_key);
+      });
     </script>
   </head>
 
