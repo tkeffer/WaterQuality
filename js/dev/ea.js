@@ -2,13 +2,16 @@
  * Retrieves water quality info from a Google spreadsheet, then displays it
  * on a map. Clicking on one of the flags brings up a popup with details.
  *
- * Tom Keffer 2013-12-10
+ * Tom Keffer 2013-12-16
  *
  */
 
 // How old a sample can be and still be used to determine water
 // quality (in milliseconds):
 var max_age = 15 * 24 * 3600 * 1000;  // = 15 days
+
+// Initial zoom level for the map
+var initial_zoom = 11;
 
 // The cutoffs for bacterial counts:
 var bact_good = 99;
@@ -34,18 +37,9 @@ var data_template = null;
 
 function initialize(data_key, label_key) {
 
-    // Set up the map.
-    var mapOptions = {
-	zoom: 10,
-	center: new google.maps.LatLng(26.0, -111.3)
-    }
-    // Start rendering the map:
-    var map = new google.maps.Map(document.getElementById('map-canvas'),
-                                  mapOptions);
-
     // Get and compile the Handlebars templates
     description_template = new Handlebars.compile($("#description-template").html());
-    data_template = new Handlebars.compile($("#data-template").html());
+    data_template        = new Handlebars.compile($("#data-template").html());
     
     // Get the spreadsheet data as a deferred:
     var data_dfr = $.Deferred();
@@ -56,7 +50,7 @@ function initialize(data_key, label_key) {
 		  }
 		 );
 
-    // Get the label data as a deferred:
+    // Get the label spreadsheet as a deferred:
     var label_dfr = $.Deferred();
     Tabletop.init({key : label_key,
 		   callback: label_dfr.resolve,
@@ -66,15 +60,23 @@ function initialize(data_key, label_key) {
 		 );
 
     // Wait until both the data and labels have been fetched,
-    // then call process_data
-    $.when(data_dfr, label_dfr).done(process_data);
+    $.when(data_dfr, label_dfr).done(function(data_result, label_result){
+        // Unpack the results from the deferreds, then pass on to process_data:
+        process_data(data_result[0], label_result[0]);
+    }
+);
     
     // This function will be used to process the spreadsheet data
-    function process_data(data_result, label_result){
-        var data_spreadsheet = data_result[0];
-        var label_spreadsheet = label_result[0];
+    function process_data(data_spreadsheet, label_spreadsheet){
 
-        // First, gather all the labels for the data types
+        // Get the center of all the sites, then render the Google
+        // map around that
+        var latlon = get_center(data_spreadsheet.sites.elements);
+        var map = new google.maps.Map(document.getElementById('map-canvas'),
+                                      { zoom: initial_zoom,
+	                                center: latlon});
+
+        // Gather all the labels for the data types
         var labels = [];
         for (i=0; i<label_spreadsheet.labels.column_names.length; i++){
             var var_name = label_spreadsheet.labels.column_names[i];
@@ -122,6 +124,36 @@ function filter_data(dataset, site_name, desired_columns){
     result_set.column_names = desired_columns;
 
     return result_set;
+}
+
+function get_center(sites){
+    // Calculate the center of all the sampling sites.
+
+    var lat_sum = 0.0
+    var lon_sum = 0.0
+    var count = 0
+
+    $.each(sites, function(index, site){
+        lat = parseFloat(site["latitude"]);
+        lon = parseFloat(site["longitude"]);
+        // Check to make sure this is a valid lat/lon
+        if (isNaN(lat) || isNaN(lon) || !lat || !lon)
+            return;
+        lat_sum += lat;
+        lon_sum += lon;
+        count += 1; }  );
+
+    if (count){
+        var lat = lat_sum / count;
+        var lon = lon_sum / count;
+        center = new google.maps.LatLng(lat, lon);
+    }
+    else {
+        // If there are no valid sites, then use a default
+        center = new google.maps.LatLng(26.0, -111.3);
+    }
+    return center;
+
 }
 
 function mark_site(map, site_info){
