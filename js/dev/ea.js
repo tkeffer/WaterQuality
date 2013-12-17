@@ -106,19 +106,20 @@ function filter_data(dataset, site_name, desired_columns){
     // Go through all the data, selecting only the data for
     // this site and only the desired data types
     var result_set = [];
+
     // Iterate through all the data rows
-    for (irow=0; irow<dataset.length; irow++){
+    $.each(dataset, function(index, datarow){
         // Select only sites matching the requested site
-        if (dataset[irow]["sitio"] == site_name) {
-            // Select only columns matching the requested desired columns
+        if (datarow["sitio"] == site_name) {
+            // Save only the data with the desired data types.
             var row_data = [];
-            for (icol=0; icol<desired_columns.length; icol++){
-                var var_name = desired_columns[icol];
-                row_data.push(dataset[irow][var_name]);
-            }
+            $.each(desired_columns, function(inx, var_name){
+                row_data.push(datarow[var_name]);
+            });
             result_set.push(row_data);
         }
-    }
+    });
+
     // Store the column names
     result_set.column_names = desired_columns;
 
