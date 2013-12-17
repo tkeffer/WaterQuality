@@ -47,8 +47,7 @@ function initialize(data_key, label_key) {
 		   callback: data_dfr.resolve,
 		   simpleSheet: false,
                    wanted: ['data', 'sites']
-		  }
-		 );
+		  });
 
     // Get the label spreadsheet as a deferred:
     var label_dfr = $.Deferred();
@@ -56,51 +55,51 @@ function initialize(data_key, label_key) {
 		   callback: label_dfr.resolve,
 		   simpleSheet: false,
                    wanted: ['labels']
-		  }
-		 );
+		  });
 
     // Wait until both the data and labels have been fetched,
+    // then process the data and draw the map
     $.when(data_dfr, label_dfr).done(function(data_result, label_result){
         // Unpack the results from the deferreds, then pass on to process_data:
         process_data(data_result[0], label_result[0]);
     }
-);
-    
-    // This function will be used to process the spreadsheet data
-    function process_data(data_spreadsheet, label_spreadsheet){
+                                    );
+}
 
-        // Get the center of all the sites, then render the Google
-        // map around that
-        var latlon = get_center(data_spreadsheet.sites.elements);
-        var map = new google.maps.Map(document.getElementById('map-canvas'),
-                                      { zoom: initial_zoom,
-	                                center: latlon});
+// This function will be used to process the spreadsheet data
+function process_data(data_spreadsheet, label_spreadsheet){
 
-        // Gather all the labels for the data types
-        var labels = [];
-        for (i=0; i<label_spreadsheet.labels.column_names.length; i++){
-            var var_name = label_spreadsheet.labels.column_names[i];
-            labels.push(label_spreadsheet.labels.elements[0][var_name]);
-        }
+    // Get the center of all the sites, then render the Google
+    // map around that
+    var latlon = get_center(data_spreadsheet.sites.elements);
+    var map = new google.maps.Map(document.getElementById('map-canvas'),
+                                  { zoom: initial_zoom,
+	                            center: latlon});
 
-        // For each collection site, gather its data together
-        for (isite=0; isite<data_spreadsheet.sites.elements.length; isite++){
-
-	    // site_info will contain lat, lon, description, etc., for this site
-	    var site_info = data_spreadsheet.sites.elements[isite];
-            var site_name = site_info["site"];
-
-            site_info.data = filter_data(data_spreadsheet.data.elements,
-                                         site_name,
-                                         label_spreadsheet.labels.column_names);
-
-            // Add the labels
-            site_info.labels = labels;
-
-	    mark_site(map, site_info);
-        }
+    // Gather all the labels for the data types
+    var labels = [];
+    for (i=0; i<label_spreadsheet.labels.column_names.length; i++){
+        var var_name = label_spreadsheet.labels.column_names[i];
+        labels.push(label_spreadsheet.labels.elements[0][var_name]);
     }
 
+    // For each collection site, gather its data together
+    for (isite=0; isite<data_spreadsheet.sites.elements.length; isite++){
+
+	// site_info will contain lat, lon, description, etc., for this site
+	var site_info = data_spreadsheet.sites.elements[isite];
+        var site_name = site_info["site"];
+
+        site_info.data = filter_data(data_spreadsheet.data.elements,
+                                     site_name,
+                                     label_spreadsheet.labels.column_names);
+
+        // Add the labels to the site information
+        site_info.labels = labels;
+
+        // Mark the site on the map
+	mark_site(map, site_info);
+    }
 }
 
 function filter_data(dataset, site_name, desired_columns){
@@ -165,15 +164,15 @@ function mark_site(map, site_info){
 	console.log(site_info.site, " location unknown.");
 	return
     }
-    var myLatLng = new google.maps.LatLng(site_info.latitude, site_info.longitude);
+    var site_latlon = new google.maps.LatLng(site_info.latitude, site_info.longitude);
 
-    // Get the URL of the flag to be used for the marker
+    // Get the quality summary for this site:
     var q_summary = get_health_summary(site_info.data, max_age);
-    var flag_url = flags[q_summary];
+
 
     // The icon data for the site marker
     var icon_data = {
-	url: flag_url,
+	url: flags[q_summary],
 	// This marker is 20 pixels wide by 32 pixels tall.
 	size: new google.maps.Size(20, 32),
 	// The origin for this image is 0,0.
@@ -184,7 +183,7 @@ function mark_site(map, site_info){
 
     // Now build the marker using the above data:
     var marker = new google.maps.Marker({
-        position: myLatLng,
+        position: site_latlon,
         map: map,
         icon: icon_data,
         shape: shape,
