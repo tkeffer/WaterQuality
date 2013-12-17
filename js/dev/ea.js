@@ -85,20 +85,16 @@ function process_data(data_spreadsheet, label_spreadsheet){
 
     // Gather all the labels for the data types
     var labels = [];
-    for (i=0; i<label_spreadsheet.labels.column_names.length; i++){
-        var var_name = label_spreadsheet.labels.column_names[i];
+    $.each(label_spreadsheet.labels.column_names, function(inx, var_name){
         labels.push(label_spreadsheet.labels.elements[0][var_name]);
-    }
+    });
 
     // For each collection site, gather its data together
-    for (isite=0; isite<data_spreadsheet.sites.elements.length; isite++){
+    $.each(data_spreadsheet.sites.elements, function(inx, site_info){
 
-	// site_info will contain lat, lon, description, etc., for this site
-	var site_info = data_spreadsheet.sites.elements[isite];
-        var site_name = site_info["site"];
-
+	// Add the site data to the site information
         site_info.data = filter_data(data_spreadsheet.data.elements,
-                                     site_name,
+                                     site_info["site"],
                                      label_spreadsheet.labels.column_names);
 
         // Add the labels to the site information
@@ -106,7 +102,7 @@ function process_data(data_spreadsheet, label_spreadsheet){
 
         // Mark the site on the map
 	mark_site(map, site_info);
-    }
+    });
 }
 
 function filter_data(dataset, site_name, desired_columns){
