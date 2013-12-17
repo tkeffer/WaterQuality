@@ -59,11 +59,18 @@ function initialize(data_key, label_key) {
 
     // Wait until both the data and labels have been fetched,
     // then process the data and draw the map
-    $.when(data_dfr, label_dfr).done(function(data_result, label_result){
+    $.when(data_dfr, label_dfr).then(function(data_result, label_result){
         // Unpack the results from the deferreds, then pass on to process_data:
-        process_data(data_result[0], label_result[0]);
-    }
+        process_data(data_result[0], label_result[0]); },
+                                     fail_data
                                     );
+}
+
+// This function is used if the spreadsheet queries fail
+function fail_data(){
+    var map = new google.maps.Map(document.getElementById('map-canvas'),
+                                  { zoom: initial_zoom,
+	                            center: google.maps.LatLng(26.0, -111.3)});
 }
 
 // This function will be used to process the spreadsheet data
