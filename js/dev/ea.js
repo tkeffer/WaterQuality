@@ -19,10 +19,10 @@ var bact_caution = 199;
 
 // Flags to be used as markers.
 var flags = {
-    'unknown'   : 'images/unknown.png',
-    'good'      : 'images/good.png',
-    'caution'   : 'images/caution.png',
-    'unhealthy' : 'images/unhealthy.png'
+    'unknown': 'images/unknown.png',
+    'good': 'images/good.png',
+    'caution': 'images/caution.png',
+    'unhealthy': 'images/unhealthy.png'
 };
 
 // Shape of the clickable polygon around each marker
@@ -39,84 +39,88 @@ function initialize(data_key, label_key) {
 
     // Get and compile the Handlebars templates
     description_template = new Handlebars.compile($("#description-template").html());
-    data_template        = new Handlebars.compile($("#data-template").html());
-    
+    data_template = new Handlebars.compile($("#data-template").html());
+
     // Get the spreadsheet data as a deferred:
     var data_dfr = $.Deferred();
-    Tabletop.init({key : data_key,
-		   callback: data_dfr.resolve,
-		   simpleSheet: false,
-                   wanted: ['data', 'sites']
-		  });
+    Tabletop.init({key: data_key,
+        callback: data_dfr.resolve,
+        simpleSheet: false,
+        wanted: ['datos', 'sitios']
+    });
 
     // Get the label spreadsheet as a deferred:
     var label_dfr = $.Deferred();
-    Tabletop.init({key : label_key,
-		   callback: label_dfr.resolve,
-		   simpleSheet: false,
-                   wanted: ['labels']
-		  });
+    Tabletop.init({key: label_key,
+        callback: label_dfr.resolve,
+        simpleSheet: false,
+        wanted: ['etiquetas']
+    });
 
     // Wait until both the data and labels have been fetched,
     // then process the data and draw the map
-    $.when(data_dfr, label_dfr).then(function(data_result, label_result){
-        // Unpack the results from the deferreds, then pass on to process_data:
-        process_data(data_result[0], label_result[0]); },
-                                     fail_data
-                                    );
+    $.when(data_dfr, label_dfr).then(function (data_result, label_result) {
+            // Unpack the results from the deferreds, then pass on to process_data:
+            process_data(data_result[0], label_result[0]);
+        },
+        fail_data
+    );
 }
 
-// This function is used if the spreadsheet queries fail
-function fail_data(){
+// This function is used if the spreadsheet queries fail. Unfortunately, as of
+// commit 5bedac0, Tabletop dies silently if given a bad key, so this function
+// never gets called.
+function fail_data() {
+    // Data query failed. Just draw the map.
     var map = new google.maps.Map(document.getElementById('map-canvas'),
-                                  { zoom: initial_zoom,
-	                            center: google.maps.LatLng(26.0, -111.3)});
+        { zoom: initial_zoom,
+            center: google.maps.LatLng(26.0, -111.3)});
 }
 
 // This function will be used to process the spreadsheet data
-function process_data(data_spreadsheet, label_spreadsheet){
+function process_data(data_spreadsheet, label_spreadsheet) {
 
     // Get the center of all the sites, then render the Google
     // map around that
-    var latlon = get_center(data_spreadsheet.sites.elements);
+    var latlon = get_center(data_spreadsheet.sitios.elements);
     var map = new google.maps.Map(document.getElementById('map-canvas'),
-                                  { zoom: initial_zoom,
-	                            center: latlon});
+        { zoom: initial_zoom,
+            center: latlon});
 
     // Gather all the labels for the data types
     var labels = [];
-    $.each(label_spreadsheet.labels.column_names, function(inx, var_name){
-        labels.push(label_spreadsheet.labels.elements[0][var_name]);
+    $.each(label_spreadsheet.etiquetas.column_names, function (inx, var_name) {
+        labels.push(label_spreadsheet.etiquetas.elements[0][var_name]);
     });
 
     // For each collection site, gather its data together
-    $.each(data_spreadsheet.sites.elements, function(inx, site_info){
+    $.each(data_spreadsheet.sitios.elements, function (inx, site_info) {
 
-	// Add the site data to the site information
-        site_info.data = filter_data(data_spreadsheet.data.elements,
-                                     site_info["site"],
-                                     label_spreadsheet.labels.column_names);
+        // Add the site data to the site information
+        site_info.data = filter_data(data_spreadsheet.datos.elements,
+            site_info["sitio"],
+            label_spreadsheet.etiquetas.column_names);
 
         // Add the labels to the site information
         site_info.labels = labels;
 
         // Mark the site on the map
-	mark_site(map, site_info);
+        mark_site(map, site_info);
     });
 }
 
-function filter_data(dataset, site_name, desired_columns){
+function filter_data(dataset, site_name, desired_columns) {
     // Go through all the data, selecting only the data for
     // this site and only the desired data types
     var result_set = [];
 
     // Iterate through all the data rows
-    $.each(dataset, function(index, datarow){
+    $.each(dataset, function (index, datarow) {
         // Select only sites matching the requested site
         if (datarow["sitio"] == site_name) {
             // Save only the data with the desired data types.
             var row_data = [];
-            $.each(desired_columns, function(inx, var_name){
+            $.each(desired_columns, function (inx, var_name) {
                 row_data.push(datarow[var_name]);
             });
             result_set.push(row_data);
@@ -129,24 +133,25 @@ function filter_data(dataset, site_name, desired_columns){
     return result_set;
 }
 
-function get_center(sites){
+function get_center(sites) {
     // Calculate the center of all the sampling sites.
 
-    var lat_sum = 0.0
-    var lon_sum = 0.0
-    var count = 0
+    var lat_sum = 0.0;
+    var lon_sum = 0.0;
+    var count = 0;
 
-    $.each(sites, function(index, site){
-        lat = parseFloat(site["latitude"]);
-        lon = parseFloat(site["longitude"]);
+    $.each(sites, function (index, site) {
+        lat = parseFloat(site["latitud"]);
+        lon = parseFloat(site["longitud"]);
         // Check to make sure this is a valid lat/lon
         if (isNaN(lat) || isNaN(lon) || !lat || !lon)
             return;
         lat_sum += lat;
         lon_sum += lon;
-        count += 1; }  );
+        count += 1;
+    });
 
-    if (count){
+    if (count) {
         var lat = lat_sum / count;
         var lon = lon_sum / count;
         center = new google.maps.LatLng(lat, lon);
@@ -159,16 +164,16 @@ function get_center(sites){
 
 }
 
-function mark_site(map, site_info){
+function mark_site(map, site_info) {
     // Mark the site on the map using a flag.
     // Also, attach a popup window to the flag
 
     // Make sure the site has a valid latitude & longitude
-    if (site_info.latitude == null || site_info.longitude == null){
-	console.log(site_info.site, " location unknown.");
-	return
+    if (site_info.latitud == null || site_info.longitud == null) {
+        console.log(site_info.site, " location unknown.");
+        return
     }
-    var site_latlon = new google.maps.LatLng(site_info.latitude, site_info.longitude);
+    var site_latlon = new google.maps.LatLng(site_info.latitud, site_info.longitud);
 
     // Get the quality summary for this site:
     var q_summary = get_health_summary(site_info.data, max_age);
@@ -176,13 +181,13 @@ function mark_site(map, site_info){
 
     // The icon data for the site marker
     var icon_data = {
-	url: flags[q_summary],
-	// This marker is 20 pixels wide by 32 pixels tall.
-	size: new google.maps.Size(20, 32),
-	// The origin for this image is 0,0.
-	origin: new google.maps.Point(0,0),
-	// The anchor for this image is the base of the flagpole at 0,32.
-	anchor: new google.maps.Point(0, 32)
+        url: flags[q_summary],
+        // This marker is 20 pixels wide by 32 pixels tall.
+        size: new google.maps.Size(20, 32),
+        // The origin for this image is 0,0.
+        origin: new google.maps.Point(0, 0),
+        // The anchor for this image is the base of the flagpole at 0,32.
+        anchor: new google.maps.Point(0, 32)
     };
 
     // Now build the marker using the above data:
@@ -191,7 +196,7 @@ function mark_site(map, site_info){
         map: map,
         icon: icon_data,
         shape: shape,
-        title: site_info.site
+        title: site_info.sitio
     });
 
     // Store away the site information:
@@ -206,25 +211,25 @@ function attach_window(marker) {
     /*
      * Put a message in an InfoWindow, then associate it with a marker.
      */
-    google.maps.event.addListener(marker, 'click', function() {
+    google.maps.event.addListener(marker, 'click', function () {
         // If a window is already open, close it.
-	if (infowindow){
-	    infowindow.close();
-	}
-	// Retrieve the site information
-	site_info = this.site_info;
+        if (infowindow) {
+            infowindow.close();
+        }
+        // Retrieve the site information
+        site_info = this.site_info;
 
         // Open up an InfoBubble window and populate it with a couple of tabs:
-	infowindow = new InfoBubble();
+        infowindow = new InfoBubble();
         infowindow.addTab('Description', description_template(site_info));
         infowindow.addTab('Data', data_template(site_info));
-	infowindow.open(marker.map, marker);
+        infowindow.open(marker.map, marker);
     });
 }
 
 var right_now = new Date().getTime();
 
-function get_health_summary(site_data, stale){
+function get_health_summary(site_data, stale) {
     /*
      * For this site, determine the whether the water quality
      * is 'good', 'caution', or 'unhealthy'. If the sample is too
@@ -233,14 +238,14 @@ function get_health_summary(site_data, stale){
 
     var date_col = site_data.column_names.indexOf("fecha");
     // If there is no date column, return 'unknown'
-    if (date_col < 0){
+    if (date_col < 0) {
         return 'unknown';
     }
     var last_t = 0;
-    for (var irow=0; irow<site_data.length; irow++){
+    for (var irow = 0; irow < site_data.length; irow++) {
         var t = Date.parse(site_data[irow][date_col]);
-        if (!isNaN(t)){
-            if (t > last_t){
+        if (!isNaN(t)) {
+            if (t > last_t) {
                 // Record both the time and the row
                 last_t = t;
                 last_row = irow;
@@ -248,7 +253,7 @@ function get_health_summary(site_data, stale){
         }
     }
 
-    if (last_t < right_now - stale){
+    if (last_t < right_now - stale) {
         // Too old
         return 'unknown';
     }
@@ -256,13 +261,13 @@ function get_health_summary(site_data, stale){
     var bact_col = site_data.column_names.indexOf("enterococos");
     var bact_val = site_data[last_row][bact_col];
 
-    if (bact_val == null){
+    if (bact_val == null) {
         return 'unknown';
-    } 
-    else if (bact_val <= bact_good){
+    }
+    else if (bact_val <= bact_good) {
         return 'good';
     }
-    else if (bact_val <= bact_caution){
+    else if (bact_val <= bact_caution) {
         return 'caution';
     }
     else {

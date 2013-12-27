@@ -218,4 +218,5 @@ pip-log.txt
 ## Local
 #############
 .picasa.ini
-
+# JetBrains stuff:
+.idea/
