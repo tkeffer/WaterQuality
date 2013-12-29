@@ -1,3 +1,4 @@
+"use strict";
 /*
  * Retrieves water quality info from a Google spreadsheet, then displays it
  * on a map. Clicking on one of the flags brings up a popup with details.
@@ -77,6 +78,13 @@ function fail_data() {
             center: google.maps.LatLng(26.0, -111.3)});
 }
 
+var SiteInfo = function(site_name, latitude, longitude, description){
+    this.site_name = site_name;
+    this.latitude = latitude;
+    this.longitude = longitude;
+    this.description = description;
+}
+
 // This function will be used to process the spreadsheet data
 function process_data(data_spreadsheet, label_spreadsheet) {
 
@@ -139,6 +147,7 @@ function get_center(sites) {
     var lat_sum = 0.0;
     var lon_sum = 0.0;
     var count = 0;
+    var center;
 
     $.each(sites, function (index, site) {
         lat = parseFloat(site["latitud"]);
@@ -217,7 +226,7 @@ function attach_window(marker) {
             infowindow.close();
         }
         // Retrieve the site information
-        site_info = this.site_info;
+        var site_info = this.site_info;
 
         // Open up an InfoBubble window and populate it with a couple of tabs:
         infowindow = new InfoBubble();
@@ -242,6 +251,7 @@ function get_health_summary(site_data, stale) {
         return 'unknown';
     }
     var last_t = 0;
+    var last_row;
     for (var irow = 0; irow < site_data.length; irow++) {
         var t = Date.parse(site_data[irow][date_col]);
         if (!isNaN(t)) {
