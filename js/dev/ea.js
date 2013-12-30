@@ -78,12 +78,46 @@ function fail_data() {
             center: google.maps.LatLng(26.0, -111.3)});
 }
 
-var SiteInfo = function(site_name, latitude, longitude, description){
-    this.site_name = site_name;
-    this.latitude = latitude;
-    this.longitude = longitude;
-    this.description = description;
-}
+/**
+ * SiteInfo object: Holds all site relevant information, such
+ * as lat, lon, description, and data.
+ *
+ * @param {Object} options
+ * @constructor
+ */
+var SiteInfo = function(options){
+    this.site_name = options.sitio;
+    this.latitude = options.latitud;
+    this.longitude = options.longitud;
+    this.description = options.descripción;
+};
+
+SiteInfo.prototype = {
+
+    /**
+     * extract_data: Filter the data array for any data matching my site name.
+     *
+     * @param {Array} data_array
+     */
+    extract_data: function(data_array){
+        var site_name = this.site_name;
+        this.data = data_array.filter(function(data_row){
+            return site_name == data_row["sitio"];
+        });
+    },
+
+    ordered_data: function(column_names){
+        var od = [];
+        $.each(this.data, function(inx, row_data){
+            var row_array = [];
+            $.each(column_names, function(jnx, var_name){
+                row_array.push(row_data[var_name]);
+            });
+            od.push(row_array);
+        });
+        return od;
+    }
+};
 
 // This function will be used to process the spreadsheet data
 function process_data(data_spreadsheet, label_spreadsheet) {
@@ -96,49 +130,87 @@ function process_data(data_spreadsheet, label_spreadsheet) {
             center: latlon});
 
     // Gather all the labels for the data types
-    var labels = [];
+    var label_tags = [];
     $.each(label_spreadsheet.etiquetas.column_names, function (inx, var_name) {
-        labels.push(label_spreadsheet.etiquetas.elements[0][var_name]);
+        label_tags.push(label_spreadsheet.etiquetas.elements[0][var_name]);
     });
 
-    // For each collection site, gather its data together
-    $.each(data_spreadsheet.sitios.elements, function (inx, site_info) {
+    var measurements = {"names" : label_spreadsheet.etiquetas.column_names,
+                        "labels" : label_tags};
 
-        // Add the site data to the site information
-        site_info.data = filter_data(data_spreadsheet.datos.elements,
-            site_info["sitio"],
-            label_spreadsheet.etiquetas.column_names);
+    // For each sampling site, build a SiteInfo object
+    $.each(data_spreadsheet.sitios.elements, function (inx, this_site) {
 
-        // Add the labels to the site information
-        site_info.labels = labels;
+        var site_info = new SiteInfo(this_site);
+        // Extract any data for this site from the data spreadsheet:
+        site_info.extract_data(data_spreadsheet.datos.elements);
 
         // Mark the site on the map
-        mark_site(map, site_info);
+        mark_site(map, site_info, measurements);
     });
 }
 
-function filter_data(dataset, site_name, desired_columns) {
-    // Go through all the data, selecting only the data for
-    // this site and only the desired data types
-    var result_set = [];
+function mark_site(map, site_info, measurements) {
+    // Mark the site on the map using a flag.
+    // Also, attach a popup window to the flag
 
-    // Iterate through all the data rows
-    $.each(dataset, function (index, datarow) {
-        // Select only sites matching the requested site
-        if (datarow["sitio"] == site_name) {
-            // Save only the data with the desired data types.
-            var row_data = [];
-            $.each(desired_columns, function (inx, var_name) {
-                row_data.push(datarow[var_name]);
-            });
-            result_set.push(row_data);
-        }
+    // Make sure the site has a valid latitude & longitude
+    if (site_info.latitude == null || site_info.longitude == null) {
+        console.log(site_info.site, " location unknown.");
+        return
+    }
+    var site_latlon = new google.maps.LatLng(site_info.latitude, site_info.longitude);
+
+    // Get the quality summary for this site:
+    var q_summary = get_health_summary(site_info.data, max_age);
+
+    // The icon data for the site marker
+    var icon_data = {
+        url: flags[q_summary],
+        // This marker is 20 pixels wide by 32 pixels tall.
+        size: new google.maps.Size(20, 32),
+        // The origin for this image is 0,0.
+        origin: new google.maps.Point(0, 0),
+        // The anchor for this image is the base of the flagpole at 0,32.
+        anchor: new google.maps.Point(0, 32)
+    };
+
+    // Now build the marker using the above data:
+    var marker = new google.maps.Marker({
+        position: site_latlon,
+        map: map,
+        icon: icon_data,
+        shape: shape,
+        title: site_info.site_name
     });
 
-    // Store the column names
-    result_set.column_names = desired_columns;
+    attach_window(marker, site_info, measurements);
+}
 
-    return result_set;
+var infowindow = null;
+
+function attach_window(marker, site_info, measurements) {
+    /*
+     * Put a message in an InfoWindow, then associate it with a marker.
+     */
+    google.maps.event.addListener(marker, 'click', function () {
+        // If a window is already open, close it.
+        if (infowindow) {
+            infowindow.close();
+        }
+
+        var site_binder = {
+            "site_info" : site_info,
+            "measurements" : measurements,
+            "data_rows" : site_info.ordered_data(measurements.names)
+        };
+
+        // Open up an InfoBubble window and populate it with a couple of tabs:
+        infowindow = new InfoBubble();
+        infowindow.addTab('Description', description_template(site_binder));
+        infowindow.addTab('Data', data_template(site_binder));
+        infowindow.open(marker.map, marker);
+    });
 }
 
 function get_center(sites) {
@@ -173,69 +245,6 @@ function get_center(sites) {
 
 }
 
-function mark_site(map, site_info) {
-    // Mark the site on the map using a flag.
-    // Also, attach a popup window to the flag
-
-    // Make sure the site has a valid latitude & longitude
-    if (site_info.latitud == null || site_info.longitud == null) {
-        console.log(site_info.site, " location unknown.");
-        return
-    }
-    var site_latlon = new google.maps.LatLng(site_info.latitud, site_info.longitud);
-
-    // Get the quality summary for this site:
-    var q_summary = get_health_summary(site_info.data, max_age);
-
-
-    // The icon data for the site marker
-    var icon_data = {
-        url: flags[q_summary],
-        // This marker is 20 pixels wide by 32 pixels tall.
-        size: new google.maps.Size(20, 32),
-        // The origin for this image is 0,0.
-        origin: new google.maps.Point(0, 0),
-        // The anchor for this image is the base of the flagpole at 0,32.
-        anchor: new google.maps.Point(0, 32)
-    };
-
-    // Now build the marker using the above data:
-    var marker = new google.maps.Marker({
-        position: site_latlon,
-        map: map,
-        icon: icon_data,
-        shape: shape,
-        title: site_info.sitio
-    });
-
-    // Store away the site information:
-    marker.site_info = site_info;
-
-    attach_window(marker);
-}
-
-var infowindow = null;
-
-function attach_window(marker) {
-    /*
-     * Put a message in an InfoWindow, then associate it with a marker.
-     */
-    google.maps.event.addListener(marker, 'click', function () {
-        // If a window is already open, close it.
-        if (infowindow) {
-            infowindow.close();
-        }
-        // Retrieve the site information
-        var site_info = this.site_info;
-
-        // Open up an InfoBubble window and populate it with a couple of tabs:
-        infowindow = new InfoBubble();
-        infowindow.addTab('Description', description_template(site_info));
-        infowindow.addTab('Data', data_template(site_info));
-        infowindow.open(marker.map, marker);
-    });
-}
-
 var right_now = new Date().getTime();
 
 function get_health_summary(site_data, stale) {
@@ -245,31 +254,26 @@ function get_health_summary(site_data, stale) {
      * old, or missing, then it's 'unknown'.
      */
 
-    var date_col = site_data.column_names.indexOf("fecha");
-    // If there is no date column, return 'unknown'
-    if (date_col < 0) {
-        return 'unknown';
-    }
     var last_t = 0;
     var last_row;
-    for (var irow = 0; irow < site_data.length; irow++) {
-        var t = Date.parse(site_data[irow][date_col]);
+
+    $.each(site_data, function(inx, site_row){
+        var t = Date.parse(site_row["fecha"]);
         if (!isNaN(t)) {
             if (t > last_t) {
-                // Record both the time and the row
+                // Record the time and the row
                 last_t = t;
-                last_row = irow;
+                last_row = site_row;
             }
         }
-    }
+    });
 
     if (last_t < right_now - stale) {
         // Too old
         return 'unknown';
     }
 
-    var bact_col = site_data.column_names.indexOf("enterococos");
-    var bact_val = site_data[last_row][bact_col];
+    var bact_val = last_row["enterococos"];
 
     if (bact_val == null) {
         return 'unknown';

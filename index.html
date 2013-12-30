@@ -73,31 +73,31 @@
 
     <script id="description-template" type="text/x-handlebars-template">
       <div class="popup_box">
-        <h1>{{sitio}}</h1>
+        <h1>{{site_info.site_name}}</h1>
         <div class="popup_photo">
           <h2>Photo</h2>
-          <img src="images/{{sitio}}.jpg"/>
+          <img src="images/{{site_info.site_name}}.jpg"/>
         </div> <!-- End popup_photo -->
         <div class="popup_description">
           <h2>Description</h2>
-          {{{descripción}}}
+          {{{site_info.description}}}
         </div> <!-- End popup_description -->
       </div> <!-- End popup_box -->
     </script>
 
     <script id="data-template" type="text/x-handlebars-template">
       <div class="popup_data">
-        <h1>{{site}}</h1>
+        <h1>{{site_info.site_name}}</h1>
         <h2>Historical data</h2>
         <table>
           <tr>
             {{! Iterate over each column heading }}
-            {{#each labels}}
+            {{#each measurements.labels}}
               <td class="popup_cell_name">{{{this}}}</td>
             {{/each}}
           </tr>
           {{! Iterate over each row of data }}
-          {{#each data}}
+          {{#each data_rows}}
             <tr>
               {{! Now iterate over each data cell in the row }}
               {{#each this}}
