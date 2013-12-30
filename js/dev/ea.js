@@ -36,31 +36,75 @@ var shape = {
 var description_template = null;
 var data_template = null;
 
-function initialize(data_key, label_key) {
+/*
+ * SiteInfo object: Holds all site relevant information, such
+ * as lat, lon, description, and data.
+ */
+var SiteInfo = function (options) {
+    this.site_name = options["sitio"];
+    this.latitude = options["latitud"];
+    this.longitude = options["longitud"];
+    this.description = options["descripción"];
+};
+
+SiteInfo.prototype = {
+
+    /*
+     * extract_data: Filter the provided data array, and
+     * extract any data that matches my site name.
+     */
+    extract_data: function (data_array) {
+        var site_name = this.site_name;
+        this.data = data_array.filter(function (data_row) {
+            return site_name == data_row["sitio"];
+        });
+    },
+
+    /*
+     * ordered_data: Return an Array holding my data in the order
+     * of the provided column names.
+     */
+    ordered_data: function (column_names) {
+        var od = [];
+        $.each(this.data, function (inx, row_data) {
+            var row_array = [];
+            $.each(column_names, function (jnx, var_name) {
+                row_array.push(row_data[var_name]);
+            });
+            od.push(row_array);
+        });
+        return od;
+    }
+};
+
+/*
+ * Called after the webpage has finished loading. The entry point.
+ */
+function on_load(data_key, label_key) {
 
     // Get and compile the Handlebars templates
     description_template = new Handlebars.compile($("#description-template").html());
     data_template = new Handlebars.compile($("#data-template").html());
 
     // Get the spreadsheet data as a deferred:
-    var data_dfr = $.Deferred();
+    var data_deferred = $.Deferred();
     Tabletop.init({key: data_key,
-        callback: data_dfr.resolve,
+        callback: data_deferred.resolve,
         simpleSheet: false,
         wanted: ['datos', 'sitios']
     });
 
     // Get the label spreadsheet as a deferred:
-    var label_dfr = $.Deferred();
+    var label_deferred = $.Deferred();
     Tabletop.init({key: label_key,
-        callback: label_dfr.resolve,
+        callback: label_deferred.resolve,
         simpleSheet: false,
         wanted: ['etiquetas']
     });
 
     // Wait until both the data and labels have been fetched,
     // then process the data and draw the map
-    $.when(data_dfr, label_dfr).then(function (data_result, label_result) {
+    $.when(data_deferred, label_deferred).then(function (data_result, label_result) {
             // Unpack the results from the deferreds, then pass on to process_data:
             process_data(data_result[0], label_result[0]);
         },
@@ -78,46 +122,6 @@ function fail_data() {
             center: google.maps.LatLng(26.0, -111.3)});
 }
 
-/**
- * SiteInfo object: Holds all site relevant information, such
- * as lat, lon, description, and data.
- *
- * @param {Object} options
- * @constructor
- */
-var SiteInfo = function(options){
-    this.site_name = options.sitio;
-    this.latitude = options.latitud;
-    this.longitude = options.longitud;
-    this.description = options.descripción;
-};
-
-SiteInfo.prototype = {
-
-    /**
-     * extract_data: Filter the data array for any data matching my site name.
-     *
-     * @param {Array} data_array
-     */
-    extract_data: function(data_array){
-        var site_name = this.site_name;
-        this.data = data_array.filter(function(data_row){
-            return site_name == data_row["sitio"];
-        });
-    },
-
-    ordered_data: function(column_names){
-        var od = [];
-        $.each(this.data, function(inx, row_data){
-            var row_array = [];
-            $.each(column_names, function(jnx, var_name){
-                row_array.push(row_data[var_name]);
-            });
-            od.push(row_array);
-        });
-        return od;
-    }
-};
 
 // This function will be used to process the spreadsheet data
 function process_data(data_spreadsheet, label_spreadsheet) {
@@ -129,14 +133,16 @@ function process_data(data_spreadsheet, label_spreadsheet) {
         { zoom: initial_zoom,
             center: latlon});
 
-    // Gather all the labels for the data types
+    // Gather all the label tags for the measurement types to be displayed
     var label_tags = [];
     $.each(label_spreadsheet.etiquetas.column_names, function (inx, var_name) {
         label_tags.push(label_spreadsheet.etiquetas.elements[0][var_name]);
     });
 
-    var measurements = {"names" : label_spreadsheet.etiquetas.column_names,
-                        "labels" : label_tags};
+    // This holds the names of the measurement types to be displayed,
+    // as well as the labels used to tag them.
+    var measurements = {"names": label_spreadsheet.etiquetas.column_names,
+        "labels": label_tags};
 
     // For each sampling site, build a SiteInfo object
     $.each(data_spreadsheet.sitios.elements, function (inx, this_site) {
@@ -199,10 +205,12 @@ function attach_window(marker, site_info, measurements) {
             infowindow.close();
         }
 
+        // This binds all the site information together in a convenient
+        // object so the Handlebars template can reference them.
         var site_binder = {
-            "site_info" : site_info,
-            "measurements" : measurements,
-            "data_rows" : site_info.ordered_data(measurements.names)
+            "site_info": site_info,
+            "measurements": measurements,
+            "data_rows": site_info.ordered_data(measurements.names)
         };
 
         // Open up an InfoBubble window and populate it with a couple of tabs:
@@ -257,7 +265,7 @@ function get_health_summary(site_data, stale) {
     var last_t = 0;
     var last_row;
 
-    $.each(site_data, function(inx, site_row){
+    $.each(site_data, function (inx, site_row) {
         var t = Date.parse(site_row["fecha"]);
         if (!isNaN(t)) {
             if (t > last_t) {
