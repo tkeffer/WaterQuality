@@ -89,8 +89,8 @@
       <div class="popup_data">
         <h1>{{site_info.site_name}}</h1>
         <h2>Historical data</h2>
-        <table>
-          <tr>
+        <table id="data-table">
+          <tr id="column-headings">
             {{! Iterate over each column heading }}
             {{#each measurements.labels}}
               <td class="popup_cell_name">{{{this}}}</td>
