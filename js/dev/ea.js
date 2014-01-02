@@ -78,15 +78,13 @@ SiteInfo.prototype = {
 };
 
 /*
- * Called after the webpage has finished loading. The entry point.
+ * Entry point
  */
-function on_load(data_key, label_key) {
+function do_ea(data_key, label_key) {
 
-    // Get and compile the Handlebars templates
-    description_template = new Handlebars.compile($("#description-template").html());
-    data_template = new Handlebars.compile($("#data-template").html());
-
-    // Get the spreadsheet data as a deferred:
+    // We can start right away with accessing the spreadsheet data,
+    // because it does not depend on the DOM being constructed yet.
+    // First, start get the data spreadsheet as a deferred:
     var data_deferred = $.Deferred();
     Tabletop.init({key: data_key,
         callback: data_deferred.resolve,
@@ -94,7 +92,7 @@ function on_load(data_key, label_key) {
         wanted: ['datos', 'sitios']
     });
 
-    // Get the label spreadsheet as a deferred:
+    // Next, get the label spreadsheet as a deferred:
     var label_deferred = $.Deferred();
     Tabletop.init({key: label_key,
         callback: label_deferred.resolve,
@@ -106,59 +104,59 @@ function on_load(data_key, label_key) {
     // then process the data and draw the map
     $.when(data_deferred, label_deferred).then(function (data_result, label_result) {
             // Unpack the results from the deferreds, then pass on to process_data:
-            process_data(data_result[0], label_result[0]);
-        },
-        fail_data
+            draw_map(data_result[0], label_result[0]);
+        }
     );
 }
 
-// This function is used if the spreadsheet queries fail. Unfortunately, as of
-// commit 5bedac0, Tabletop dies silently if given a bad key, so this function
-// never gets called.
-function fail_data() {
-    // Data query failed. Just draw the map.
-    var map = new google.maps.Map(document.getElementById('map-canvas'),
-        { zoom: initial_zoom,
-            center: google.maps.LatLng(26.0, -111.3)});
-}
-
-
-// This function will be used to process the spreadsheet data
-function process_data(data_spreadsheet, label_spreadsheet) {
+// This function will be used to process the spreadsheet data and draw the map
+function draw_map(data_spreadsheet, label_spreadsheet) {
 
     // Get the center of all the sites, then render the Google
     // map around that
     var latlon = get_center(data_spreadsheet.sitios.elements);
-    var map = new google.maps.Map(document.getElementById('map-canvas'),
-        { zoom: initial_zoom,
-            center: latlon});
 
-    // Gather all the label tags for the measurement types to be displayed
-    var label_tags = [];
-    $.each(label_spreadsheet.etiquetas.column_names, function (inx, var_name) {
-        label_tags.push(label_spreadsheet.etiquetas.elements[0][var_name]);
+    // Defer drawing the map until the document is ready:
+    google.maps.event.addDomListener(window, 'load', function () {
+
+        var map = new google.maps.Map(document.getElementById('map-canvas'),
+            { zoom: initial_zoom,
+                center: latlon});
+
+        // Now that the DOM is ready, we can get and compile the Handlebars templates
+        description_template = new Handlebars.compile($("#description-template").html());
+        data_template = new Handlebars.compile($("#data-template").html());
+
+        // Gather all the label tags for the measurement types to be displayed
+        var label_tags = [];
+        $.each(label_spreadsheet.etiquetas.column_names, function (inx, var_name) {
+            label_tags.push(label_spreadsheet.etiquetas.elements[0][var_name]);
+        });
+
+        // This holds the names of the measurement types to be displayed,
+        // as well as the labels used to tag them.
+        var measurements = {"names": label_spreadsheet.etiquetas.column_names,
+            "labels": label_tags};
+
+        // For each sampling site, build a SiteInfo object
+        $.each(data_spreadsheet.sitios.elements, function (inx, this_site) {
+
+            var site_info = new SiteInfo(this_site);
+            // Extract any data for this site from the data spreadsheet:
+            site_info.extract_data(data_spreadsheet.datos.elements);
+
+            // Mark the site on the map
+            mark_site(map, site_info, measurements);
+        });
     });
 
-    // This holds the names of the measurement types to be displayed,
-    // as well as the labels used to tag them.
-    var measurements = {"names": label_spreadsheet.etiquetas.column_names,
-        "labels": label_tags};
-
-    // For each sampling site, build a SiteInfo object
-    $.each(data_spreadsheet.sitios.elements, function (inx, this_site) {
-
-        var site_info = new SiteInfo(this_site);
-        // Extract any data for this site from the data spreadsheet:
-        site_info.extract_data(data_spreadsheet.datos.elements);
-
-        // Mark the site on the map
-        mark_site(map, site_info, measurements);
-    });
 }
 
+/*
+ * Mark the map with a flag at the location of the sampling site, and attach a popup
+ * window to the flag.
+ */
 function mark_site(map, site_info, measurements) {
-    // Mark the site on the map using a flag.
-    // Also, attach a popup window to the flag
 
     // Make sure the site has a valid latitude & longitude
     if (site_info.latitude == null || site_info.longitude == null) {
